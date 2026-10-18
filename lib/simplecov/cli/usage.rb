@@ -99,7 +99,7 @@ module SimpleCov
           affected options:
             --base REF                Diff against the merge base of REF and HEAD (default: origin's HEAD, else main)
             --run <command...>        Run <command> (all args after --run) with the selection appended, or bare on a full-suite fallback, exiting with the command's status
-            --json                    Emit {full_suite, triggers, tests} as a JSON object
+            --json                    Emit {full_suite, triggers, tests, contexts} as a JSON object
 
           merge options:
             --output PATH             Write merged resultset to PATH (default: #{cli.default_resultset})

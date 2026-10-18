@@ -18,12 +18,12 @@ module SimpleCov
           state = initial_state(changed, contexts, coverage, opts, stderr, root: root)
           return nil unless changed.all? { |path| classify(path, state) }
 
-          {tests: state.fetch(:tests).uniq.sort, triggers: state.fetch(:triggers)}
+          {tests: state.fetch(:tests).uniq.sort, triggers: state.fetch(:triggers), contexts: state.fetch(:picked).sort}
         end
 
         def initial_state(changed, contexts, coverage, opts, stderr, root:)
           {
-            tests: [], triggers: [], changed: changed, contexts: contexts,
+            tests: [], triggers: [], picked: Set.new, changed: changed, contexts: contexts,
             known: contexts.each_with_object(Set.new) { |id, set| set << test_file_of(id) },
             index: CoverageFile.exact_index(coverage), root: root, opts: opts, stderr: stderr
           } #: Hash[Symbol, untyped]
@@ -56,6 +56,7 @@ module SimpleCov
         def select_test_file(path, state, note_deleted: true)
           if on_disk?(path, state)
             state.fetch(:tests) << path
+            state.fetch(:picked).merge(state.fetch(:contexts).select { |id| test_file_of(id).eql?(path) })
           elsif note_deleted
             state.fetch(:stderr).puts("simplecov affected: skipping deleted test file #{path}")
           end
@@ -100,6 +101,7 @@ module SimpleCov
             state.fetch(:triggers) << "recorded test #{id} touches #{path} but has no file location"
           elsif on_disk?(file, state)
             state.fetch(:tests) << file
+            state.fetch(:picked) << id
           elsif !state.fetch(:changed).include?(file)
             state.fetch(:triggers) << "recorded test file #{file} no longer exists"
           end

@@ -124,6 +124,16 @@ RSpec.describe SimpleCov::CLI do
       end
     end
 
+    context "with a changed test file under --json" do
+      before { file!("spec/result_spec.rb", "# changed\n") }
+
+      it "names the recorded tests in it" do
+        run_in_repo("affected", "--input", json_path, "--json")
+
+        expect(JSON.parse(stdout.string)["contexts"]).to eq(["spec/result_spec.rb:42"])
+      end
+    end
+
     context "with a new test file the map has never seen" do
       before do
         file!("spec/brand_new_spec.rb")
@@ -204,7 +214,7 @@ RSpec.describe SimpleCov::CLI do
     it "still emits a JSON object when nothing differs from the base" do
       run_in_repo("affected", "--input", json_path, "--json")
 
-      expect(JSON.parse(stdout.string)).to eq("full_suite" => false, "triggers" => [], "tests" => [])
+      expect(JSON.parse(stdout.string)).to eq("full_suite" => false, "triggers" => [], "tests" => [], "contexts" => [])
     end
 
     context "with a deleted test file the map never knew" do
@@ -885,7 +895,8 @@ RSpec.describe SimpleCov::CLI do
         run_in_repo("affected", "--input", json_path, "--json")
 
         expect(JSON.parse(stdout.string)).to eq(
-          "full_suite" => false, "triggers" => [], "tests" => ["spec/result_spec.rb", "spec/source_file_spec.rb"]
+          "full_suite" => false, "triggers" => [], "tests" => ["spec/result_spec.rb", "spec/source_file_spec.rb"],
+          "contexts" => ["spec/result_spec.rb:42", "spec/source_file_spec.rb:12"]
         )
       end
     end
@@ -908,6 +919,10 @@ RSpec.describe SimpleCov::CLI do
 
       it "selects no tests" do
         expect(parsed["tests"]).to eq([])
+      end
+
+      it "names no recorded tests" do
+        expect(parsed["contexts"]).to eq([])
       end
 
       it "carries the triggers" do
