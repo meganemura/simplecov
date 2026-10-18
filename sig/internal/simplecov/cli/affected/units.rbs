@@ -1,0 +1,47 @@
+module SimpleCov
+  module CLI
+    module Affected
+      module Units
+        class Unit < ::Struct[untyped]
+          attr_accessor id: String
+          attr_accessor method: bool
+          attr_accessor parent: Unit?
+          attr_accessor last_line: Integer
+          attr_accessor entry_line: Integer
+          attr_accessor start_offset: Integer
+          attr_accessor end_offset: Integer
+          attr_accessor head: String
+          attr_accessor body: String
+
+          def self.new: (String id, bool method, Unit? parent, Integer last_line, Integer entry_line, Integer start_offset, Integer end_offset, String head, String body) -> Unit
+        end
+
+        class Outline < ::Struct[untyped]
+          attr_accessor units: Hash[String, Unit]
+          attr_accessor skeleton: String
+
+          def self.new: (Hash[String, Unit] units, String skeleton) -> Outline
+        end
+
+        class Text
+          @parts: Array[String]
+          @broken: bool
+
+          def initialize: () -> void
+
+          def add: (Symbol type, String value) -> void
+
+          def to_s: () -> String
+        end
+
+        BREAKS: Array[Symbol]
+
+        def self?.outline: (String source) -> Outline?
+
+        def self?.fill: (Array[Unit] units, Array[Prism::Token] tokens, Text skeleton) -> void
+
+        def self?.innermost: (Array[Integer] open, Integer line, Array[Unit] units, Array[Text] heads, Array[Text] bodies, Text skeleton) -> Text
+      end
+    end
+  end
+end

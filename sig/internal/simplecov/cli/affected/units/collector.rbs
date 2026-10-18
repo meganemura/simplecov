@@ -1,0 +1,31 @@
+module SimpleCov
+  module CLI
+    module Affected
+      module Units
+        class Collector < ::Prism::Visitor
+          @units: Array[Unit]
+          @scope: Array[String]
+          @stack: Array[Unit]
+          @labels: Array[String]
+          @seen: Hash[String, Integer]
+
+          def initialize: () -> void
+
+          def collect: (Prism::ProgramNode program) -> Array[Unit]
+
+          private
+
+          def within_scope: (String name) { () -> void } -> void
+
+          def within_unit: (Prism::DefNode | Prism::BlockNode | Prism::LambdaNode node, String label) { () -> void } -> void
+
+          def add: (Prism::DefNode | Prism::BlockNode | Prism::LambdaNode node, String label, Integer entry) -> Unit
+
+          def entry_line: (Prism::DefNode | Prism::BlockNode | Prism::LambdaNode node) -> Integer?
+
+          def call_label: (Prism::CallNode node) -> String
+        end
+      end
+    end
+  end
+end

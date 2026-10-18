@@ -6,14 +6,19 @@ require_relative "command_helpers"
 require_relative "tests"
 require_relative "affected/changed_files"
 require_relative "affected/runner"
+require_relative "affected/changed_units"
 require_relative "affected/selection"
+require_relative "affected/units"
 
 module SimpleCov
   module CLI
-    # `simplecov affected`: select the test files whose recorded tests touch the
+    # `simplecov affected`: select the test files whose recorded tests ran the
     # code changed since a git base ref, from a coverage.json written under
     # `track_tests`. The change is everything between the merge base of `--base`
-    # and the working tree, plus untracked files.
+    # and the working tree, plus untracked files. Within a changed file the
+    # selection narrows to the tests that ran a changed unit (see
+    # `ChangedUnits`), and falls back to every test touching the file wherever
+    # units cannot tell.
     #
     # The set intersection is the easy half; the hard half is knowing when to
     # distrust the map, because a test map is stale the moment something changes
