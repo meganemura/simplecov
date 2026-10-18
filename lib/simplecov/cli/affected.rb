@@ -83,7 +83,7 @@ module SimpleCov
 
       def no_changes(opts, stdout, stderr)
         stderr.puts("simplecov affected: no changes against #{opts.fetch(:base)}")
-        empty = {tests: [], triggers: []} #: Hash[Symbol, Array[String]]
+        empty = {tests: [], triggers: [], contexts: []} #: Hash[Symbol, Array[String]]
         emit_json(empty, false, stdout) if opts.fetch(:json)
         0
       end
@@ -101,7 +101,7 @@ module SimpleCov
       def emit_json(selection, full, stdout)
         none = [] #: Array[String]
         stdout.puts(JSON.pretty_generate("full_suite" => full, "triggers" => selection.fetch(:triggers),
-          "tests" => full ? none : selection.fetch(:tests)))
+          "tests" => full ? none : selection.fetch(:tests), "contexts" => full ? none : selection.fetch(:contexts)))
         0
       end
 

@@ -279,7 +279,8 @@ the report has no data for at all. Changed or brand-new test files always run, w
 The fallback is loud, with each trigger named on stderr, and on stdout it prints nothing, which composes with
 substitution (`bundle exec rspec $(simplecov affected)` runs everything when the selection cannot be trusted). With
 `--run` the command runs bare, which means the full suite for the usual runners. `--json` emits
-`{"full_suite": ..., "triggers": [...], "tests": [...]}` for tooling.
+`{"full_suite": ..., "triggers": [...], "tests": [...], "contexts": [...]}` for tooling, where `contexts` names the
+recorded tests behind the selected files, for tooling that runs tests one by one.
 
 Like `patch`, the diff is anchored at the repository root, so a run from a subdirectory selects over the whole change
 (with `--run` starting the runner at that root), and changed files resolve against the report by exact path, so a
