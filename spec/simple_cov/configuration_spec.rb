@@ -2980,6 +2980,50 @@ RSpec.describe SimpleCov::Configuration do
     end
   end
 
+  describe "#affected" do
+    it "selects by default" do
+      expect(config.affected).to eq(:select)
+    end
+
+    it "stores a configured mode" do
+      config.affected(:audit)
+
+      expect(config.affected).to eq(:audit)
+    end
+
+    it "takes a mode written as a string" do
+      config.affected = "All"
+
+      expect(config.affected).to eq(:all)
+    end
+
+    it "refuses a mode it does not know" do
+      expect { config.affected(:some) }
+        .to raise_error(SimpleCov::ConfigurationError, /Unsupported affected mode :some/)
+    end
+
+    it "honors SIMPLECOV_AFFECTED over the configured value" do
+      config.affected(:select)
+      stub_const("ENV", ENV.to_hash.merge("SIMPLECOV_AFFECTED" => "off"))
+
+      expect(config.affected).to eq(:off)
+    end
+
+    it "ignores an empty SIMPLECOV_AFFECTED" do
+      config.affected(:all)
+      stub_const("ENV", ENV.to_hash.merge("SIMPLECOV_AFFECTED" => ""))
+
+      expect(config.affected).to eq(:all)
+    end
+
+    it "refuses a SIMPLECOV_AFFECTED it does not know, naming the variable" do
+      stub_const("ENV", ENV.to_hash.merge("SIMPLECOV_AFFECTED" => "audti"))
+
+      expect { config.affected }
+        .to raise_error(SimpleCov::ConfigurationError, /Unsupported SIMPLECOV_AFFECTED mode "audti"/)
+    end
+  end
+
   describe "#merge_timeout" do
     after { config.instance_variable_set(:@merge_timeout, nil) }
 
