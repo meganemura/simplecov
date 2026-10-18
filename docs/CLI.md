@@ -272,6 +272,19 @@ $ simplecov affected --base main --run bundle exec rspec
 Everything after `--run` is the command, the selected files are appended to it, and the exit status is the
 command's own.
 
+Within a changed file, the selection follows the code each test ran rather than the file as a whole. The report
+already holds the file's source as it was recorded and the lines each test ran, so `affected` compares the recorded
+source with the working tree unit by unit, where a unit is a `def`, block, or lambda whose body starts below its
+opening line, and selects only the tests that ran a line of a unit whose body changed. A test that ran a block runs
+again for an edit inside it, while a test that only ran the method around it does not. Comments, indentation, blank
+lines, and moving a unit among its neighbors change no unit, so they select nothing. Everything the units cannot
+pin down selects every test touching the file, as before: a change outside every unit (a constant, a one-line
+method, a `private`, a magic comment), a changed parameter list, a method added, removed, or renamed, a unit that
+ran while no test was being recorded (code that runs as files load), and a report written with
+`source_in_json false` or a file that does not parse. One case is narrower than the file rule: a unit that ran
+both while files loaded and inside some test is charged to the tests that ran it, so a test that only reads what the
+load-time run left behind is not selected. Tests still run by file, since that is what runners accept.
+
 The set intersection is the easy half. The hard half is knowing when to distrust the map, because a test map is
 stale the moment something changes that no test mentions by name. Any changed file outside the tracked set falls
 back to the full suite: `Gemfile.lock`, `.simplecov`, spec helpers, the runner configuration, and any changed file

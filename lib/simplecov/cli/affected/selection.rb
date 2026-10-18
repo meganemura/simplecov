@@ -73,9 +73,21 @@ module SimpleCov
           state.fetch(:index)[File.expand_path(path, state.fetch(:root))] || state.fetch(:index)[path]
         end
 
+        # Only the tests that ran a changed unit, when the units can tell; every
+        # test touching the file otherwise.
         def select_covering(path, entry, state)
           table = covering_table(path, entry, state)
-          table&.each_key { |index| select_context(state.fetch(:contexts).fetch(index), path, state) }
+          return unless table
+
+          indices = ChangedUnits.contexts(entry, table, current_source(path, state)) || table.keys
+          indices.each { |index| select_context(state.fetch(:contexts).fetch(index), path, state) }
+        end
+
+        # nil for a file the change deleted, which leaves no units to compare.
+        def current_source(path, state)
+          File.read(File.expand_path(path, state.fetch(:root)), encoding: Encoding::UTF_8)
+        rescue SystemCallError
+          nil
         end
 
         def covering_table(path, entry, state)
