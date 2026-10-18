@@ -9,16 +9,16 @@ module SimpleCov
       # the lines it ran, so the units the tests ran are derived here rather than
       # stored, and a report without the source still selects as before.
       #
-      # A unit changed when its body did or it is gone, and a block or lambda that
-      # is new charges the nearest recorded unit holding it. A test ran a unit
-      # when it ran a line from the unit's entry line down, so a nested unit's
-      # lines count for every unit around it. Anything that cannot be pinned to
-      # units answers nil, which means the whole file, the rule before units: a
-      # change outside every unit, a changed head, a method added or removed, a
-      # block with no recorded unit around it, a unit whose entry line coverage
-      # does not report, a unit that ran while no test was being recorded (code
-      # run as files load, whose effects any test may read), and a source that is
-      # missing, unrecorded, or does not parse.
+      # A unit changed when its body did or it is gone. A block or lambda that is
+      # new changes the body of the unit around it, so that unit is charged. A
+      # test ran a unit when it ran a line from the unit's entry line down, so a
+      # nested unit's lines count for every unit around it. Anything that cannot
+      # be pinned to units answers nil, which means the whole file, the rule
+      # before units: a change outside every unit, a changed head, a method added
+      # or removed, a unit whose entry line coverage does not report, a unit that
+      # ran while no test was being recorded (code run as files load, whose
+      # effects any test may read), and a source that is missing, unrecorded, or
+      # does not parse.
       module ChangedUnits
         extend self
 
@@ -39,7 +39,7 @@ module SimpleCov
 
         # Lines are stored chomped, and joined back with the newline each one lost.
         def recorded_source(source)
-          source.map { |line| "#{line}\n" }.join if source.instance_of?(Array) && source.all?(String)
+          source.map { |line| "#{line}\n" }.join if source.instance_of?(Array)
         end
 
         # nil when the change reaches past the units: a head that changed (the
@@ -53,16 +53,9 @@ module SimpleCov
           added = after.units.each_value.reject { |unit| before.units.key?(unit.id) }
           return nil if added.any?(&:method)
 
-          changed = kept.filter_map { |unit, now| unit unless now&.body.eql?(unit.body) }
-          changed + added.map { |unit| recorded_ancestor(unit, before) }
-        end
-
-        # A new block always has a recorded unit around it once the skeletons
-        # match: its call, and so its name, sits in the text that encloses it, so
-        # a new block directly in the skeleton would have changed the skeleton.
-        def recorded_ancestor(unit, before)
-          unit = _ = unit.parent until before.units.key?(unit.id)
-          before.units.fetch(unit.id)
+          # A new block needs no charge of its own: its marker and its call sit in
+          # the text around it, so the recorded unit holding it changed too.
+          kept.filter_map { |unit, now| unit unless now&.body.eql?(unit.body) }
         end
 
         def reached(charged, lines, table)

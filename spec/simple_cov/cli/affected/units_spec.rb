@@ -266,15 +266,17 @@ RSpec.describe SimpleCov::CLI do
       end
     end
 
-    context "with an edit to a block whose first line coverage does not report" do
-      let(:hits) { super().tap { |lines| lines[9] = nil } }
+    {"does not report" => nil, "ignores" => "ignored"}.each do |how, mark|
+      context "with an edit to a block whose first line coverage #{how}" do
+        let(:hits) { super().tap { |lines| lines[9] = mark } }
 
-      before { edit!("item * 2", "item * 3") }
+        before { edit!("item * 2", "item * 3") }
 
-      it "selects every test touching the file" do
-        affected
+        it "selects every test touching the file" do
+          affected
 
-        expect(stdout.string).to eq(every_file)
+          expect(stdout.string).to eq(every_file)
+        end
       end
     end
 
@@ -292,8 +294,9 @@ RSpec.describe SimpleCov::CLI do
 
     {
       "without the recorded source" => -> { entry.delete("source") },
-      "with a recorded source that is not a list of lines" => -> { entry["source"] = [1] },
-      "without line hits" => -> { entry.delete("lines") }
+      "with a recorded source that is not a list of lines" => -> { entry["source"] = recorded },
+      "without line hits" => -> { entry.delete("lines") },
+      "with line hits that are not a list" => -> { entry["lines"] = 5 }
     }.each do |report, strip|
       context "with a report #{report}" do
         before do
