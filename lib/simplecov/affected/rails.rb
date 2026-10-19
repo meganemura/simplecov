@@ -21,6 +21,13 @@ module SimpleCov
     # rendered it, and the selection then reaches the names the template
     # mentions too.
     #
+    # A ViewComponent compiles its sidecar template the same way, and its
+    # render emits no ActionView event of its own, so each render of a
+    # component is a read of the files beside its class's file
+    # (`room_component.html.erb`, `room_component.yml`, the files in
+    # `room_component/`), its superclasses' included, since a subclass
+    # without a template renders its parent's.
+    #
     module Rails
       RENDER = /\Arender_(?:template|partial|layout|collection)\.action_view\z/
 
@@ -48,7 +55,18 @@ module SimpleCov
         end
       end
 
+      module ComponentRender
+        def render_in(...)
+          Rails.rendered(self.class)
+          super
+        end
+      end
+
       def self.install(recorder)
+        if !@components && defined?(::ViewComponent::Base)
+          ::ViewComponent::Base.prepend(ComponentRender)
+          @components = true
+        end
         return if @notifications || !defined?(::ActiveSupport::Notifications)
 
         @notifications = ::ActiveSupport::Notifications.subscribe(RENDER) do |*event|
@@ -56,6 +74,28 @@ module SimpleCov
           identifier = payload[:identifier]
           recorder.read(identifier) if identifier.is_a?(String) && File.absolute_path?(identifier)
         end
+      end
+
+      def self.rendered(component)
+        recorder = Affected.recorder or return
+        sidecars = (@sidecars ||= {}) #: Hash[Class, Array[String]]
+        sidecars.fetch(component) { sidecars[component] = sidecars(component) }.each { |path| recorder.read(path) }
+      end
+
+      def self.sidecars(component)
+        component.ancestors.take_while { |klass| !klass.equal?(::ViewComponent::Base) }.grep(Class).flat_map do |klass|
+          source = klass.name && Object.const_source_location(klass.name)&.first
+          source ? beside(source) : []
+        end.uniq
+      end
+
+      # The files named like `source` with another extension, and the files in
+      # the directory named like it.
+      def self.beside(source)
+        dir = File.dirname(source)
+        name = File.basename(source, ".rb")
+        (Dir.glob("#{name}.*", base: dir) + Dir.glob("#{name}/**/*", base: dir))
+          .map { |path| File.join(dir, path) }.select { |path| File.file?(path) && !path.eql?(source) }.sort
       end
 
       # Idempotent, so a project that names its own globals first keeps them.

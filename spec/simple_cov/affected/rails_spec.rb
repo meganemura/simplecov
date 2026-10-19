@@ -74,6 +74,75 @@ RSpec.describe "SimpleCov::Affected::Rails" do
     end
   end
 
+  describe "a ViewComponent's render" do
+    include AffectedHelpers
+    include AffectedProject
+
+    before do
+      stub_const("ViewComponent::Base", Class.new { def render_in(_view) = "html" })
+      stub_const("AffectedSpecComponents", Module.new)
+      %w[@components @sidecars].each { |name| SimpleCov::Affected::Rails.instance_variable_set(name, nil) }
+      write_source("app/components/card_component.rb", <<~RUBY)
+        module AffectedSpecComponents
+          class CardComponent < ViewComponent::Base; end
+          class WideCardComponent < CardComponent; end
+        end
+      RUBY
+      write_source("app/components/card_component.html.erb", "<div></div>\n")
+      write_source("app/components/card_component.yml", "en: {}\n")
+      write_source("app/components/card_component/card_component.html+phone.erb", "<p></p>\n")
+      write_source("app/components/cards_component.html.erb", "<ul></ul>\n")
+      load File.join(project_root, "app/components/card_component.rb")
+    end
+
+    after { FileUtils.rm_rf(project_root) }
+
+    def reads_of_render(component)
+      with_recorder(project_root) do |recorder|
+        SimpleCov::Affected::Rails.install(recorder)
+        recorder.test("t", file: nil, line: nil) { component.new.render_in(nil) }
+        recorder.tests.fetch("t").reads.sort
+      end
+    end
+
+    it "reads the files beside the component's class" do
+      expect(reads_of_render(AffectedSpecComponents::CardComponent)).to eq(%w[
+        app/components/card_component.html.erb app/components/card_component.yml
+        app/components/card_component/card_component.html+phone.erb
+      ])
+    end
+
+    it "reads a superclass's files for a subclass without its own" do
+      expect(reads_of_render(AffectedSpecComponents::WideCardComponent)).to include("app/components/card_component.html.erb")
+    end
+
+    it "still renders" do
+      with_recorder(project_root) do |recorder|
+        SimpleCov::Affected::Rails.install(recorder)
+
+        expect(AffectedSpecComponents::CardComponent.new.render_in(nil)).to eq("html")
+      end
+    end
+
+    it "renders without a recorder" do
+      SimpleCov::Affected::Rails.install(SimpleCov::Affected::Recorder.new(project_root, project_root))
+
+      expect(AffectedSpecComponents::CardComponent.new.render_in(nil)).to eq("html")
+    end
+
+    it "skips a component whose constant is gone" do
+      stub_const("AffectedSpecComponents::Gone", Class.new(AffectedSpecComponents::CardComponent))
+      gone = AffectedSpecComponents::Gone
+      hide_const("AffectedSpecComponents::Gone")
+
+      expect(reads_of_render(gone)).to include("app/components/card_component.yml")
+    end
+
+    it "skips an anonymous component" do
+      expect(reads_of_render(Class.new(AffectedSpecComponents::CardComponent))).to include("app/components/card_component.yml")
+    end
+  end
+
   describe "the global files" do
     it "take in the locale files I18n loads from the project" do
       stub_const("I18n", Module.new { def self.load_path = [["/proj/lib/locales/ja.yml"], "/gems/rails/en.yml"] })
