@@ -20,12 +20,14 @@ module SimpleCov
 
       attr_reader :full, :reasons
 
-      # A selection that fails runs the whole suite and says why, rather than
-      # stopping a suite that would otherwise pass.
       def self.load(root, coverage_path)
         document = Sidecar.read(Sidecar.path(coverage_path))
-        return new("no recording", {}) unless document
+        document ? decide(document, root, coverage_path) : new("no recording", {})
+      end
 
+      # A selection that fails runs the whole suite and says why, rather than
+      # stopping a suite that would otherwise pass.
+      def self.decide(document, root, coverage_path)
         require_relative "tree"
         require_relative "selection"
         result = Selection.call(document, Tree.new(root, coverage_path))

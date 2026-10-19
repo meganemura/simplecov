@@ -99,7 +99,7 @@ module SimpleCov
           affected options:
             --base REF                Diff against the merge base of REF and HEAD (default: origin's HEAD, else main)
             --run <command...>        Run <command> (all args after --run) with the selection appended, or bare on a full-suite fallback, exiting with the command's status
-            --json                    Emit {full_suite, triggers, tests, contexts} as a JSON object
+            --json                    Emit {full_suite, triggers, tests, contexts} as a JSON object; with a .affected.json beside the input, {full, tests, files, new_files, skipped}
             --output PATH             With `affected merge <files...>`, which folds the .affected.json of CI shards into one: write it to PATH (default: #{File.join(cli.coverage_dir, ".affected.json")})
 
           merge options:

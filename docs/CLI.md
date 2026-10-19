@@ -302,6 +302,27 @@ lookalike entry elsewhere in the report can never stand in for a changed file th
 This is built for the local inner loop. A wrong answer in CI is a green build on a broken change, so adopt it there
 with your eyes open. The merge-base diff needs git 2.30 or later.
 
+With a `.affected.json` from [`require "simplecov/affected"`](Affected.md) beside the input, `affected` selects from
+that recording instead: single tests, by the units each ran, the data files it read, and the names it reaches, compared
+with the working tree and not with a git ref, so `--base` is ignored with a note on stderr. Stdout still lists test
+files, those holding a selected test plus the test files the recording has never seen, and `--run` appends them to the
+command. A change that reaches every test prints nothing on stdout and the reason on stderr. `--json` emits the
+selection per test:
+
+```json
+{
+  "full": null,
+  "tests": {"spec/calc_spec.rb::Calc adds": "def lib/calc.rb Calc#add"},
+  "files": ["spec/calc_spec.rb"],
+  "new_files": [],
+  "skipped": 411
+}
+```
+
+or `{"full": "<reason>"}` when every test has to run. The reasons are those of
+[How the selection decides](Affected.md#how-the-selection-decides). The project is the root the recording names, or
+the current directory when that root does not exist (a recording made on another machine).
+
 `simplecov affected merge <files...> [--output PATH]` folds the `coverage/.affected.json` that each shard of a CI
 build wrote under [`require "simplecov/affected"`](Affected.md) into one recording, written to
 `coverage/.affected.json` unless `--output` names another path. Shards split one suite, so their tests are joined

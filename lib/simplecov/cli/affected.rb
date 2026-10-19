@@ -10,6 +10,7 @@ require_relative "affected/changed_units"
 require_relative "affected/selection"
 require_relative "affected/units"
 require_relative "affected/shards"
+require_relative "affected/recorded"
 
 module SimpleCov
   module CLI
@@ -27,6 +28,9 @@ module SimpleCov
     # fails open to the full suite, out loud: each trigger is named on stderr and
     # stdout stays empty, which a bare runner reads as "run everything". Test
     # files always select themselves, recorded or not.
+    #
+    # A recording from `require "simplecov/affected"` beside the input replaces
+    # all of this with a selection of single tests and no git (see `Recorded`).
     module Affected
       extend CommandHelpers
 
@@ -38,6 +42,9 @@ module SimpleCov
         opts = parse(args)
         issue = precheck(opts)
         return error(stderr, issue) if issue
+
+        recorded = Recorded.sidecar(opts.fetch(:input))
+        return Recorded.run(recorded, opts, stdout: stdout, stderr: stderr) if recorded
 
         document = CoverageFile.load_document(opts.fetch(:input), command: "affected", stderr: stderr)
         return 1 unless document

@@ -1,0 +1,25 @@
+module SimpleCov
+  module CLI
+    module Affected
+      module Recorded
+        include CommandHelpers
+
+        extend CommandHelpers
+
+        def self?.command_name: () -> String
+
+        def self?.sidecar: (String input) -> String?
+
+        def self?.run: (String path, Hash[Symbol, untyped] opts, stdout: untyped, stderr: untyped) -> Integer
+
+        def self?.full: (String reason, Hash[Symbol, untyped] opts, String root, untyped stdout, untyped stderr) -> Integer
+
+        def self?.selection: (SimpleCov::Affected::Plan plan, Hash[String, untyped] document, String root, String coverage) -> Hash[String, untyped]
+
+        def self?.deliver: (Hash[String, untyped] selection, Hash[Symbol, untyped] opts, String root, untyped stdout, untyped stderr) -> Integer
+
+        def self?.emit: (untyped stdout, Hash[String, untyped] document) -> Integer
+      end
+    end
+  end
+end
