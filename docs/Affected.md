@@ -246,6 +246,12 @@ see. Nothing in it loads Rails; each rule looks at what is already defined when 
   and so is every locale file of the project that `I18n.load_path` names at the end of the run (an engine's, a
   `lib/locales`). A process reads all of them once. To leave one out, remove it from `SimpleCov.affected_globals`
   inside `SimpleCov.start`.
+- **Templates.** A process compiles each template once, so only the first test that renders it reads the file.
+  Every `render_template`, `render_partial`, `render_layout`, and `render_collection` event ActionView instruments
+  is a read of the rendered file in the test that rendered it, so a changed template or partial reruns exactly the
+  tests that rendered it (`read <path>`), and a test also reaches the names its templates mention: a changed constant
+  that only a view prints reruns the tests that rendered that view (`name <name>`). With `cover_views`, the
+  template's own lines say the same.
 - **Autoloading.** Zeitwerk loads a class inside whichever test uses it first. Like every project file loaded after
   boot, its class body is charged to `(boot)` (see [What is recorded](#what-is-recorded)), so the test is not
   credited with the definitions and a change to code that runs as the class loads reruns every test, as it would

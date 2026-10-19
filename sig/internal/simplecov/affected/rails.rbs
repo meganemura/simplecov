@@ -2,6 +2,23 @@ module SimpleCov
   module Affected
     module Rails
       GLOBAL: Array[String]
+      RENDER: Regexp
+
+      self.@notifications: untyped
+
+      interface _TestHost
+        def test: (String id, file: String?, line: Integer?, ?must_run: bool) { () -> bool } -> bool
+      end
+
+      interface _Reader
+        def read: (untyped path) -> void
+      end
+
+      module Install : _TestHost, _Reader
+        def test: (String id, file: String?, line: Integer?, ?must_run: bool) { () -> bool } -> bool
+      end
+
+      def self.install: (_Reader recorder) -> void
 
       interface _GlobalsHost
         def globals: () -> Array[String]
