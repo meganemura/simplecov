@@ -33,15 +33,19 @@ module SimpleCov
     end
 
     interface _Loading
-      def load: (untyped file, *untyped) -> bool
+      def simplecov_affected_original_load: (untyped file, *untyped) -> bool
 
-      def require: (untyped feature) -> bool
+      def simplecov_affected_original_require: (untyped feature) -> bool
     end
 
     module LoadHook : _Loading
+      ORIGINALS: Hash[Symbol, Symbol]
+
+      def self.install: (?Module kernel) -> void
+
       private
 
-      def load: (untyped file, *untyped) -> bool
+      def load: (untyped file, *untyped rest) -> bool
 
       def require: (untyped feature) -> bool
     end

@@ -40,7 +40,7 @@ module SimpleCov
       $stderr.puts "SimpleCov affected: #{plan.summary}" if plan && mode.equal?(:select) # rubocop:disable Style/StderrPuts
       recorder = @recorder = Recorder.new(SimpleCov.root, SimpleCov.coverage_path)
       File.singleton_class.prepend(ReadHook)
-      Kernel.prepend(LoadHook)
+      LoadHook.install
       recorder.start
       RSpec.install(TestTracker.rspec_module, narrow: narrowing?)
       install_minitest

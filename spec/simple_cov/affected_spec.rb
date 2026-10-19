@@ -44,8 +44,8 @@ RSpec.describe SimpleCov::Affected do
     it "hooks file reads and test file loads" do
       described_class.start
 
-      expect([File.singleton_class.ancestors, Kernel.ancestors])
-        .to match([include(described_class::ReadHook), include(described_class::LoadHook)])
+      expect([File.singleton_class.ancestors.include?(described_class::ReadHook), Kernel.private_method_defined?(:simplecov_affected_original_require)])
+        .to eq([true, true])
     end
 
     it "wires itself into RSpec" do
