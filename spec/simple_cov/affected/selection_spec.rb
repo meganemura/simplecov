@@ -133,6 +133,21 @@ RSpec.describe SimpleCov::Affected::Selection do
     expect(selected).to eq("spec/calc_spec.rb::Calc adds" => "def lib/calc.rb", "spec/calc_spec.rb::Calc subtracts" => "def lib/calc.rb")
   end
 
+  context "with a unit whose first line coverage does not report" do
+    let(:document) do
+      recording({"lib/guard.rb" => "class Guard\n  def check(a)\n    begin\n      a.to_s\n    end if a\n  end\nend\n", "spec/guard_spec.rb" => "it\n"},
+        tests: {"spec/guard_spec.rb::checks" => {file: "spec/guard_spec.rb", lines: {"lib/guard.rb" => [5]}},
+                "spec/guard_spec.rb::other" => {file: "spec/guard_spec.rb", lines: {"lib/guard.rb" => [1]}}})
+        .tap { |recorded| recorded.dig("files", "lib/guard.rb").each_value { |version| version.fetch("lines")[2] = nil } }
+    end
+
+    it "pins it down by the lines below it" do
+      document
+      edit("lib/guard.rb", "a.to_s", "a.to_sym")
+      expect(selected).to eq("spec/guard_spec.rb::checks" => "def lib/guard.rb Guard#check")
+    end
+  end
+
   context "with data files" do
     before do
       write_source("data/rates.yml", "a: 1\n")

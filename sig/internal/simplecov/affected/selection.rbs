@@ -80,6 +80,8 @@ module SimpleCov
 
       def compare: (String path, String digest) -> Status?
 
+      def traceable?: (Charged piece, Array[untyped] hits) -> bool
+
       def charged_units: (Version before, CLI::Affected::Units::Outline outlined, CLI::Affected::Units::Outline now) -> Array[Charged]
 
       def charged_one_liners: (Version before, Version after) -> Array[Charged]

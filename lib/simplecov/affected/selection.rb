@@ -31,8 +31,8 @@ module SimpleCov
     # | `name <name>` | a static it reaches by name changed |
     #
     # `def <path>` alone means the unit could not be pinned down (a source
-    # that does not parse, or a unit whose entry line coverage does not
-    # report), and every test that ran a line of the file is selected. A test
+    # that does not parse, or a unit none of whose lines coverage reports),
+    # and every test that ran a line of the file is selected. A test
     # file's load and context hooks count for each test of that file: a unit
     # the load ran in the test file itself selects the tests written inside
     # it, and one in another file selects every test of the file.
@@ -249,7 +249,16 @@ module SimpleCov
 
         charged = charged_units(before, outlined, now) + charged_one_liners(before, after)
         hits = @recording.hits(path, digest)
-        (charged.all? { |piece| hits[piece.entry_line - 1].is_a?(Integer) }) ? Status.new(false, false, charged) : WHOLE
+        (charged.all? { |piece| traceable?(piece, hits) }) ? Status.new(false, false, charged) : WHOLE
+      end
+
+      # Every entry into a unit runs a line event inside its span, so a test
+      # that entered it has a bit there, but not always on the entry line:
+      # `begin ... end if ready` reports the predicate's line, and a block
+      # whose body is a multi-line array literal reports its first element.
+      # What has to hold is that coverage reports the unit at all.
+      def traceable?(piece, hits)
+        hits[(piece.entry_line - 1)...piece.last_line].to_a.any?(Integer)
       end
 
       # A unit changed when its head or its body did, or it is gone. A unit

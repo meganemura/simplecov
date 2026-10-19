@@ -105,7 +105,7 @@ Otherwise each recorded test gets the first reason that applies, cheapest first,
 | `failed` | It failed last time. |
 | `must_run` | It is marked to run every time. |
 | `deleted <path>` | A file it ran is gone. |
-| `def <path> <unit>`, `block <path> <unit>` | A unit it ran changed or is gone: a multi-line `def`, block, or lambda, or a one-line `def` it called. `def <path>` alone means the unit could not be pinned down, and every test that ran a line of the file is selected. |
+| `def <path> <unit>`, `block <path> <unit>` | A unit it ran changed or is gone: a multi-line `def`, block, or lambda, or a one-line `def` it called. `def <path>` alone means the unit could not be pinned down (no line of it is one coverage reports), and every test that ran a line of the file is selected. |
 | `read <path>` | A data file it read changed. |
 | `name <name>` | A name it reaches was defined differently. |
 
