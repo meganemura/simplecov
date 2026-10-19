@@ -23,6 +23,7 @@ module SimpleCov
         record_contexts(document, versions, recorder, map.to_h)
         record_reads(document, recorder, root)
         record_unmeasured(document, recorder, result.original_result, loaded_features)
+        document["complete"] = recorder.complete
         document
       end
 

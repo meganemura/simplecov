@@ -24,7 +24,19 @@ module SimpleCov
           config.define_derived_metadata { |metadata| Affected::RSpec.derive(metadata, undescribed) }
           config.prepend_before(:context) { Affected::RSpec.mark(self.class) }
           config.around { |example| Affected::RSpec.run(example) }
+          config.before(:suite) { Affected::RSpec.note_filters(config) }
         end
+      end
+
+      # The exclusions RSpec sets itself (`if:`, `unless:`) and the one the
+      # selection adds leave every test of a file that matters to the run; any
+      # other filter leaves out tests the recording still has to keep.
+      OWN_EXCLUSIONS = %i[if unless affected_id].freeze
+
+      def note_filters(config)
+        recorder = Affected.recorder
+        excluded = config.exclusion_filter.rules.keys - OWN_EXCLUSIONS
+        recorder.filtered! if recorder && !(config.inclusion_filter.empty? && excluded.empty?)
       end
 
       def derive(metadata, undescribed)

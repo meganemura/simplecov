@@ -25,6 +25,22 @@ module SimpleCov
         def skipped?: () -> bool
       end
 
+      interface _Runnable
+        def run: (*untyped, **untyped) -> untyped
+
+        def filter_runnable_methods: (?untyped options) -> untyped
+      end
+
+      module Filters : _Runnable
+        NAMES: Array[Symbol]
+
+        def self.note: (untyped options) -> void
+
+        def run: (*untyped args, **untyped kwargs) -> untyped
+
+        def filter_runnable_methods: (?untyped options) -> untyped
+      end
+
       module Run : _Test
         def run: () -> untyped
       end

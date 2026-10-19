@@ -4,6 +4,8 @@ require_relative "../simplecov"
 require_relative "affected/sidecar"
 require_relative "affected/recorder"
 require_relative "affected/capture"
+require_relative "affected/merge"
+require_relative "affected/parts"
 require_relative "affected/hooks"
 require_relative "affected/rspec"
 require_relative "affected/minitest"
@@ -45,12 +47,12 @@ module SimpleCov
       return unless recorder
 
       recorder.stop_reading
-      @captured = Capture.call(recorder, result, SimpleCov.root)
+      captured = Capture.call(recorder, result, SimpleCov.root)
+      Parts.write(SimpleCov.coverage_path, SimpleCov.run_id, Process.pid, captured) if captured
     end
 
     def finish
-      captured = @captured
-      Sidecar.write(Sidecar.path(SimpleCov.coverage_path), captured) if captured
+      Parts.finish(SimpleCov.coverage_path, SimpleCov.run_id, SimpleCov.root, timeout: SimpleCov.merge_timeout)
     end
   end
 end

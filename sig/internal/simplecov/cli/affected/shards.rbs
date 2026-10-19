@@ -1,0 +1,19 @@
+module SimpleCov
+  module CLI
+    module Affected
+      module Shards
+        include CommandHelpers
+
+        extend CommandHelpers
+
+        def self?.command_name: () -> String
+
+        def self?.run: (Array[String] args, stdout: untyped, stderr: untyped) -> Integer
+
+        def self?.read_all: (Array[String] files, untyped stderr) -> Array[Hash[String, untyped]]?
+
+        def self?.write: (Array[Hash[String, untyped]] documents, Hash[Symbol, untyped] opts, untyped stdout, untyped stderr) -> Integer
+      end
+    end
+  end
+end

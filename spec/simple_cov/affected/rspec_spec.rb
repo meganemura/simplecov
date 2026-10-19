@@ -34,6 +34,12 @@ RSpec.describe SimpleCov::Affected::RSpec do
       expect(config).to have_received(:around)
     end
 
+    it "looks at the runner's filters once the suite starts" do
+      described_class.install(rspec)
+
+      expect(config).to have_received(:before).with(:suite)
+    end
+
     it "does nothing without RSpec" do
       expect(described_class.install(nil)).to be_nil
     end
@@ -135,6 +141,41 @@ RSpec.describe SimpleCov::Affected::RSpec do
       described_class.run(example)
 
       expect(SimpleCov::Affected.recorder.tests).to be_empty
+    end
+  end
+
+  describe ".note_filters" do
+    let(:config) { RSpec::Core::Configuration.new }
+
+    def complete
+      SimpleCov::Affected.recorder.tap { |recorder| recorder.boundary("spec/a_spec.rb") }.complete
+    end
+
+    it "keeps every file complete under RSpec's own filters and the selection's" do
+      config.filter_run_excluding(affected_id: ->(_id) { false })
+      described_class.note_filters(config)
+
+      expect(complete).to eq(%w[spec/a_spec.rb])
+    end
+
+    it "notes a filter that leaves tests out" do
+      config.filter_run_including(focus: true)
+      described_class.note_filters(config)
+
+      expect(complete).to be_empty
+    end
+
+    it "notes an exclusion that leaves tests out" do
+      config.filter_run_excluding(slow: true)
+      described_class.note_filters(config)
+
+      expect(complete).to be_empty
+    end
+
+    it "does nothing without a recorder" do
+      SimpleCov::Affected.instance_variable_set(:@recorder, nil)
+
+      expect(described_class.note_filters(config)).to be_nil
     end
   end
 

@@ -15,6 +15,7 @@ module SimpleCov
 
       def install(test_case)
         test_case.prepend(Run)
+        test_case.singleton_class.prepend(Filters)
       end
 
       def id(klass, name)
@@ -30,6 +31,28 @@ module SimpleCov
         klass.instance_method(name).source_location
       rescue NameError
         nil
+      end
+
+      # `-n`, `-i`, and `-e` leave out tests the recording still has to keep.
+      # Minitest 5 hands the options to each runnable class's `run`, as its
+      # last Hash argument; Minitest 6 hands them to `filter_runnable_methods`.
+      module Filters
+        NAMES = %i[filter include exclude].freeze
+
+        def self.note(options)
+          recorder = Affected.recorder
+          recorder.filtered! if recorder && options.is_a?(Hash) && NAMES.any? { |name| options[name] }
+        end
+
+        def run(*args, **kwargs)
+          Filters.note(args.last || kwargs)
+          super
+        end
+
+        def filter_runnable_methods(options = {})
+          Filters.note(options)
+          super
+        end
       end
 
       module Run

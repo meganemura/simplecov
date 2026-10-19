@@ -3,7 +3,6 @@ module SimpleCov
     extend Affected
 
     @recorder: Recorder?
-    @captured: Hash[String, untyped]?
 
     attr_reader recorder: Recorder?
 

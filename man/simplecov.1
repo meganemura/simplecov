@@ -205,6 +205,10 @@ a full\-suite fallback, exiting with the command's status
 .TP
 .B \-\-json
 Emit {full_suite, triggers, tests, contexts} as a JSON object
+.TP
+.B \-\-output PATH
+With `affected merge <files...>`, which folds the .affected.json of CI shards
+into one: write it to PATH (default: coverage/.affected.json)
 .SS merge
 .TP
 .B \-\-output PATH
