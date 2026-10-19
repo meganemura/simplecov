@@ -1,0 +1,33 @@
+module SimpleCov
+  module Affected
+    module Minitest
+      extend Minitest
+
+      SPEC_NUMBER: Regexp
+
+      def install: (untyped test_case) -> void
+
+      def id: (untyped klass, String name) -> String
+
+      def file: (untyped klass, String name) -> String?
+
+      def location: (untyped klass, String name) -> [String, Integer]?
+
+      interface _Test
+        def run: () -> untyped
+
+        def name: () -> String
+
+        def class: () -> untyped
+
+        def passed?: () -> bool
+
+        def skipped?: () -> bool
+      end
+
+      module Run : _Test
+        def run: () -> untyped
+      end
+    end
+  end
+end

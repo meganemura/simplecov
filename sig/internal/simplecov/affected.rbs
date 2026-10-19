@@ -1,0 +1,18 @@
+module SimpleCov
+  module Affected
+    extend Affected
+
+    @recorder: Recorder?
+    @captured: Hash[String, untyped]?
+
+    attr_reader recorder: Recorder?
+
+    def start: () -> void
+
+    def install_minitest: () -> void
+
+    def capture: (Result result) -> void
+
+    def finish: () -> void
+  end
+end
