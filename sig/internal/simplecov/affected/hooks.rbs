@@ -58,6 +58,14 @@ module SimpleCov
       def install_minitest_hook: (*untyped) -> untyped
     end
 
+    interface _SegmentHost
+      def flush_segment: (Hash[String, untyped]? closing) -> void
+    end
+
+    module TrackerClose : _SegmentHost
+      def close: () -> void
+    end
+
     module ForkHook : _ForkHost
       def _fork: () -> Integer
     end
@@ -89,5 +97,9 @@ module SimpleCov
 
       def result: () -> Result?
     end
+  end
+
+  class TestTracker
+    def close: () -> void
   end
 end

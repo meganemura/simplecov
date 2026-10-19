@@ -67,6 +67,15 @@ module SimpleCov
       false
     end
 
+    # Before SimpleCov collects this process's coverage, which first compiles
+    # the templates no test rendered (`cover_views`): that is SimpleCov's own
+    # work, so it reads into no context and runs in no segment, rather than
+    # in the last test's.
+    def settle
+      @recorder&.stop_reading
+      SimpleCov.test_tracker&.close
+    end
+
     def capture(result)
       recorder = @recorder
       return unless recorder
@@ -86,5 +95,6 @@ end
 
 SimpleCov.singleton_class.prepend(SimpleCov::Affected::Lifecycle)
 SimpleCov::TestTracker.singleton_class.prepend(SimpleCov::Affected::TrackerHooks)
+SimpleCov::TestTracker.prepend(SimpleCov::Affected::TrackerClose)
 Process.singleton_class.prepend(SimpleCov::Affected::ForkHook)
 SimpleCov::Affected.start

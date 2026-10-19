@@ -86,6 +86,14 @@ module SimpleCov
       end
     end
 
+    # Prepended to TestTracker: ends the open segment before SimpleCov's own
+    # end-of-run work, so that what runs from here belongs to no context.
+    module TrackerClose
+      def close
+        flush_segment(nil)
+      end
+    end
+
     # Prepended to Process's singleton class, beside SimpleCov's own fork hook.
     module ForkHook
       def _fork
@@ -125,6 +133,7 @@ module SimpleCov
       end
 
       def collect_own_coverage(standalone:)
+        Affected.settle if Affected.recorder
         collected = super
         own = current_run.result
         Affected.capture(own) if Affected.recorder && own
