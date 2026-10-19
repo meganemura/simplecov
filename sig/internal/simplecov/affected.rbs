@@ -18,6 +18,8 @@ module SimpleCov
 
     def run?: (String id) -> bool
 
+    def settle: () -> void
+
     def capture: (Result result) -> void
 
     def finish: () -> void

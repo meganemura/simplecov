@@ -62,6 +62,8 @@ module SimpleCov
       def poisoned?: () -> bool
 
       def open_segment: (String id) -> void
+
+      def flush_segment: (Hash[String, untyped]? closing) -> void
     end
 
     module TrackerAside : _SegmentHost
@@ -70,6 +72,8 @@ module SimpleCov
       @owner: Thread?
 
       def aside: [T] (String id) { () -> T } -> T
+
+      def close: () -> void
     end
 
     module ForkHook : _ForkHost
@@ -106,6 +110,8 @@ module SimpleCov
   end
 
   class TestTracker
+    def close: () -> void
+
     def aside: [T] (String id) { () -> T } -> T
   end
 end

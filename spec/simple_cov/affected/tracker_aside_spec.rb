@@ -31,6 +31,14 @@ RSpec.describe SimpleCov::Affected::TrackerAside do
     end
   end
 
+  it "leaves what runs after it closes to no context" do
+    peeks([0, 0, 0], [1, 0, 0], [1, 1, 1])
+    tracker.track("t") {}
+    tracker.close
+
+    expect([covering(1), tracker.recorded_map(closing: {file => {lines: [1, 1, 1]}}).covering(file, 2)]).to eq([["t"], []])
+  end
+
   it "answers the block's value" do
     peeks([0, 0, 0], [0, 0, 0], [0, 0, 0])
     tracker.track("t") {}

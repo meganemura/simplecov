@@ -119,6 +119,33 @@ RSpec.describe SimpleCov::Affected do
     end
   end
 
+  describe ".settle" do
+    let(:tracker) { instance_double(SimpleCov::TestTracker, close: nil) }
+
+    before { allow(SimpleCov).to receive(:test_tracker).and_return(tracker) }
+
+    it "closes the open segment" do
+      described_class.settle
+
+      expect(tracker).to have_received(:close)
+    end
+
+    it "stops charging reads" do
+      with_recorder("/proj") do |recorder|
+        described_class.settle
+        recorder.read("/proj/app/views/a.html.erb")
+
+        expect(recorder.boot_reads).to be_empty
+      end
+    end
+
+    it "does nothing without tracking" do
+      allow(SimpleCov).to receive(:test_tracker).and_return(nil)
+
+      expect { described_class.settle }.not_to raise_error
+    end
+  end
+
   describe ".run?" do
     after { described_class.instance_variable_set(:@plan, nil) }
 

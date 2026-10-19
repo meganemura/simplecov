@@ -104,6 +104,12 @@ module SimpleCov
           open_segment(previous) unless poisoned?
         end
       end
+
+      # Ends the open segment, so that what runs from here belongs to no
+      # context.
+      def close
+        flush_segment(nil)
+      end
     end
 
     # Prepended to Process's singleton class, beside SimpleCov's own fork hook.
@@ -145,6 +151,7 @@ module SimpleCov
       end
 
       def collect_own_coverage(standalone:)
+        Affected.settle if Affected.recorder
         collected = super
         own = current_run.result
         Affected.capture(own) if Affected.recorder && own

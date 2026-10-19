@@ -21,7 +21,7 @@ RSpec.describe SimpleCov::Affected::Lifecycle do
   end
   let(:host) { host_class.new(SimpleCov::CurrentRun.new, true) }
 
-  before { allow(SimpleCov::Affected).to receive_messages(start: nil, capture: nil, finish: nil) }
+  before { allow(SimpleCov::Affected).to receive_messages(start: nil, settle: nil, capture: nil, finish: nil) }
 
   around { |example| with_recorder("/proj") { example.run } }
 
@@ -40,6 +40,12 @@ RSpec.describe SimpleCov::Affected::Lifecycle do
     host.collect_own_coverage(standalone: true)
 
     expect(SimpleCov::Affected).to have_received(:capture).with(:own)
+  end
+
+  it "settles before SimpleCov collects" do
+    host.collect_own_coverage(standalone: false)
+
+    expect(SimpleCov::Affected).to have_received(:settle)
   end
 
   it "answers what collecting answers" do
@@ -82,6 +88,10 @@ RSpec.describe SimpleCov::Affected::Lifecycle do
       host.collect_own_coverage(standalone: true)
       host.current_run.result = nil
       host.result
+    end
+
+    it "settles nothing" do
+      expect(SimpleCov::Affected).not_to have_received(:settle)
     end
 
     it "captures nothing" do
