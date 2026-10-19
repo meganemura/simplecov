@@ -3,3 +3,9 @@
 module I18n
   def self.load_path: () -> Array[untyped]
 end
+
+module ActiveSupport
+  module Notifications
+    def self.subscribe: (Regexp pattern) { (*untyped) -> void } -> untyped
+  end
+end

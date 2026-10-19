@@ -15,7 +15,15 @@ module SimpleCov
     # change to one can reach any test, so these files are global: a change
     # to one, a file added under them, or one removed reruns every test.
     #
+    # A process also compiles each template once, into a method, so only the
+    # first test to render it reads the file. ActionView instruments every
+    # render, so each render is a read of the template in the test that
+    # rendered it, and the selection then reaches the names the template
+    # mentions too.
+    #
     module Rails
+      RENDER = /\Arender_(?:template|partial|layout|collection)\.action_view\z/
+
       GLOBAL = %w[
         config/**/*
         db/schema.rb db/*_schema.rb db/structure.sql db/*_structure.sql
@@ -31,10 +39,30 @@ module SimpleCov
         end
       end
 
+      # Hooks in what is defined by the first test that finds it, once per
+      # process: the application has booted by then.
+      module Install
+        def test(...)
+          Rails.install(self)
+          super
+        end
+      end
+
+      def self.install(recorder)
+        return if @notifications || !defined?(::ActiveSupport::Notifications)
+
+        @notifications = ::ActiveSupport::Notifications.subscribe(RENDER) do |*event|
+          payload = event.last #: Hash[Symbol, untyped]
+          identifier = payload[:identifier]
+          recorder.read(identifier) if identifier.is_a?(String) && File.absolute_path?(identifier)
+        end
+      end
+
       # Idempotent, so a project that names its own globals first keeps them.
       def self.register
         SimpleCov.affected_global(GLOBAL)
         Affected.singleton_class.prepend(Globals)
+        Recorder.prepend(Install)
       end
 
       def self.locale_files(root)
