@@ -81,7 +81,11 @@ RSpec.describe "track_tests", :sandbox do
     end
 
     it "charges the class body of a file a test loaded to boot" do
-      expect(stored_contexts.covering(untested_class, 3)).to include("(boot)")
+      expect(stored_contexts.covering(untested_class, 3)).to eq(["(boot)"])
+    end
+
+    it "keeps what the test ran in that file the test's" do
+      expect(stored_contexts.covering(untested_class, 9)).to eq(["spec/outside_spec.rb:14"])
     end
   end
 

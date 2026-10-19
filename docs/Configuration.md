@@ -403,7 +403,11 @@ idea dynamic contexts, and a future Coverage library feature would likely use th
 every context is one test, with two exceptions that hold code no single test ran. `(boot)` holds what runs outside
 every test: everything from `SimpleCov.start` to the first test (the test helper, the application, each spec file's
 own body as it loads), and the class body of any file a test loads for the first time, which runs once per process
-for whichever test comes first though every later test depends on it as much. And a spec file's own path, with no
+for whichever test comes first though every later test depends on it as much. For that, `track_tests` wraps
+`Kernel#require` and `Kernel#load` (by aliasing, as RubyGems, Bootsnap, and Zeitwerk do, so their wrappers stay in
+the chain): a Ruby file's first load inside a test runs in `(boot)`, and the test's recording resumes after it. A
+file loaded inside a test some other way, such as `require_relative`, is charged to `(boot)` as well as to the test,
+every line the test ran in it included. And a spec file's own path, with no
 line number, holds what its example groups' `before(:context)` and `after(:context)` hooks run, which serves every
 example of the group. `covering` accepts absolute or project-relative paths and answers with the sorted ids, and
 `contexts` lists every recorded id, including tests whose runs covered nothing new. `simplecov tests` and the HTML

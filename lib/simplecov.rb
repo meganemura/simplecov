@@ -167,6 +167,7 @@ require_relative "simplecov/test_tracker/constant_watch"
 require_relative "simplecov/test_tracker/delta"
 require_relative "simplecov/test_tracker"
 require_relative "simplecov/test_tracker/framework_hooks"
+require_relative "simplecov/test_tracker/load_aside"
 require_relative "simplecov/test_tracker/accessors"
 SimpleCov.extend SimpleCov::TestTracker::Accessors
 require_relative "simplecov/result_merger"

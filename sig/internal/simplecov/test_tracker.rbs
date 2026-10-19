@@ -9,6 +9,7 @@ module SimpleCov
     @owner: Thread?
     @depth: Integer
     @poisoned: bool
+    @loaded: Set[String]
 
     self.@rspec_hook_installed: bool?
 
@@ -26,6 +27,26 @@ module SimpleCov
     def track: [T] (String test_id) { () -> T } -> T
 
     def poisoned?: () -> bool
+
+    def loading: [T] (untyped feature, Symbol kind) { () -> T } -> T
+
+    def aside: [T] (String id) { () -> T } -> T
+
+    module LoadHook : ::Kernel
+      ORIGINALS: Hash[Symbol, Symbol]
+
+      def self.install: (?Module kernel) -> void
+
+      private
+
+      def load: (untyped file, *untyped rest) -> bool
+
+      def require: (untyped feature) -> bool
+
+      def simplecov_original_load: (untyped file, *untyped rest) -> bool
+
+      def simplecov_original_require: (untyped feature) -> bool
+    end
 
     def recorded_map: (?closing: Hash[String, untyped]?) -> ContextMap?
 
@@ -86,5 +107,7 @@ module SimpleCov
     def context_id: (String test_id) -> String
 
     def poison: () -> void
+
+    def first_load?: (untyped feature, Symbol kind) -> bool
   end
 end

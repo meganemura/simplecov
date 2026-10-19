@@ -28,6 +28,7 @@ module SimpleCov
 
         @test_tracker = TestTracker.new(granularity: track_tests_granularity)
         TestTracker.install_framework_hooks
+        TestTracker::LoadHook.install
         track_test(TestTracker::BOOT) {}
       end
     end

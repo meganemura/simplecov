@@ -55,6 +55,7 @@ module SimpleCov
       @lock = Mutex.new
       @depth = 0
       @poisoned = false
+      @loaded = Set.new #: Set[String]
     end
 
     # Records the lines the block executed as covered by `test_id`'s context
