@@ -74,6 +74,47 @@ RSpec.describe SimpleCov::Affected::Capture do
     )
   end
 
+  describe "a template eval coverage measured" do
+    def template = File.join(root, "app/views/calc/show.html.erb")
+
+    before do
+      FileUtils.mkdir_p(File.dirname(template))
+      File.write(template, "<%= 1 %>\n")
+    end
+
+    it "counts as a read of the test that rendered it" do
+      map.record("spec/calc_spec.rb::adds", template => 0b1)
+
+      expect(document.dig("tests", "spec/calc_spec.rb::adds", "reads")).to eq(["app/views/calc/show.html.erb"])
+    end
+
+    it "keeps a digest of it like any read" do
+      map.record("spec/calc_spec.rb::adds", template => 0b1)
+
+      expect(document.fetch("reads")).to include("app/views/calc/show.html.erb" => digest_of(template))
+    end
+
+    it "counts as a read of the load or boot context that rendered it" do
+      map.record("spec/calc_spec.rb", template => 0b1)
+      map.record("(boot)", template => 0b1)
+
+      expect([document.dig("loads", "spec/calc_spec.rb", "reads"), document.dig("boot", "reads")])
+        .to eq([["app/views/calc/show.html.erb", "table.yml"], ["app/views/calc/show.html.erb"]])
+    end
+
+    it "is no Ruby file the selection compares" do
+      map.record("spec/calc_spec.rb::adds", template => 0b1)
+
+      expect(document.fetch("files")).not_to have_key("app/views/calc/show.html.erb")
+    end
+  end
+
+  it "leaves a context's lines outside the project out of its reads" do
+    map.record("spec/calc_spec.rb::adds", "/gems/view.erb" => 0b1)
+
+    expect(document.dig("tests", "spec/calc_spec.rb::adds", "reads")).to eq([])
+  end
+
   it "records every file a global glob matches, with its digest" do
     File.write(File.join(root, "schema.yml"), "b: 2\n")
     globals = described_class.call(recorder, result, root, run: "run-1", globals: ["*.yml", "none/**/*"]).fetch("global")
