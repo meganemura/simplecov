@@ -10,6 +10,8 @@ module SimpleCov
 
       def self.load: (String root, String coverage_path) -> Plan
 
+      def self.decide: (Hash[String, untyped] document, String root, String coverage_path) -> Plan
+
       def initialize: (String? full, Hash[String, String?] reasons) -> void
 
       def reason: (String id) -> String?

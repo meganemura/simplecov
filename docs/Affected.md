@@ -173,6 +173,9 @@ shuffled them, so the order of the rest stays the order the seed gives. Both sti
 recording does not know (new, renamed, or dropped as stale) always runs, and so does every test when the plan is a
 full run. A file with tests left out is narrowed, so the recording keeps the records of the tests it skipped.
 
+Outside a run, `simplecov affected` reads the same recording and prints the same selection, per test with
+`--json` (see [the CLI docs](CLI.md#affected--select-the-tests-that-touch-changed-code)).
+
 Runner filters apply on top of the plan: `rspec spec/a_spec.rb` or `-n /parse/` narrows further, and the recording
 treats the run as filtered.
 
