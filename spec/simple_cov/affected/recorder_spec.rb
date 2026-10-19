@@ -141,6 +141,92 @@ RSpec.describe SimpleCov::Affected::Recorder do
     end
   end
 
+  describe "#loading of a project file that is no test file" do
+    let(:tracker) { instance_double(SimpleCov::TestTracker) }
+
+    before do
+      allow(SimpleCov).to receive(:test_tracker).and_return(tracker)
+      allow(tracker).to receive(:aside).and_yield
+    end
+
+    it "runs the first load by an absolute path in boot's segment" do
+      recorder.loading("/proj/app/models/room.rb") { :loaded }
+
+      expect(tracker).to have_received(:aside).with("(boot)")
+    end
+
+    it "gives boot the reads the load makes" do
+      recorder.test("t", file: nil, line: nil) do
+        recorder.loading("/proj/app/models/room.rb") { recorder.read("/proj/config/rooms.yml") }
+        true
+      end
+
+      expect([recorder.boot_reads.to_a, recorder.tests.fetch("t").reads.to_a]).to eq([["config/rooms.yml"], []])
+    end
+
+    it "gives the reads after the load back to the test" do
+      recorder.test("t", file: nil, line: nil) do
+        recorder.loading("/proj/app/models/room.rb") { :loaded }
+        recorder.read("/proj/data.json")
+      end
+
+      expect(recorder.tests.fetch("t").reads.to_a).to eq(["data.json"])
+    end
+
+    it "sets a file aside only on its first load" do
+      2.times { recorder.loading("/proj/app/models/room.rb") { :loaded } }
+
+      expect(tracker).to have_received(:aside).once
+    end
+
+    it "leaves a feature named relative to the load path alone" do
+      recorder.loading("app/models/room.rb") { :loaded }
+
+      expect(tracker).not_to have_received(:aside)
+    end
+
+    it "leaves a file outside the project alone" do
+      recorder.loading("/gems/rails/lib/rails.rb") { :loaded }
+
+      expect(tracker).not_to have_received(:aside)
+    end
+
+    it "answers the load's value" do
+      expect(recorder.loading("/proj/app/models/room.rb") { :loaded }).to eq(:loaded)
+    end
+
+    it "still loads when tracking is not running" do
+      allow(SimpleCov).to receive(:test_tracker).and_return(nil)
+
+      expect(recorder.loading("/proj/app/models/room.rb") { :loaded }).to eq(:loaded)
+    end
+  end
+
+  describe "#forked" do
+    it "opens boot's segment in a worker forked between tests" do
+      recorder.forked
+
+      expect(SimpleCov).to have_received(:track_test).with("(boot)")
+    end
+
+    it "gives boot the reads a worker makes before its first test" do
+      recorder.boundary("test/a_test.rb")
+      recorder.forked
+      recorder.read("/proj/db/schema.yml")
+
+      expect(recorder.boot_reads.to_a).to eq(["db/schema.yml"])
+    end
+
+    it "leaves a fork inside a test to the test" do
+      recorder.test("t", file: nil, line: nil) do
+        recorder.forked
+        recorder.read("/proj/data.json")
+      end
+
+      expect(recorder.tests.fetch("t").reads.to_a).to eq(["data.json"])
+    end
+  end
+
   describe "#boundary" do
     it "opens the file's context" do
       recorder.boundary("spec/a_spec.rb")

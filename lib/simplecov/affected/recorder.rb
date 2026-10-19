@@ -18,6 +18,12 @@ module SimpleCov
     # boundary, so the code after the marker belongs to it without wrapping
     # anything.
     #
+    # A project file that loads after boot (an autoload inside a test, a
+    # `require` a test file makes, a forked worker setting itself up) runs
+    # its class bodies once per process, for whichever test happens to come
+    # first. That code serves every later test as much as that one, so it is
+    # charged to boot, as if the file had loaded before the first test.
+    #
     class Recorder
       BOOT = "(boot)"
       TEST_FILE = /\A(?:test_.*|spec_.*|.*_(?:test|spec))\.rb\z/
@@ -36,6 +42,8 @@ module SimpleCov
         @sink = @boot_reads #: Set[String]?
         @narrowed = Set.new #: Set[String]
         @filtered = false
+        @aside = Set.new #: Set[String]
+        @testing = false
       end
 
       def start
@@ -48,12 +56,14 @@ module SimpleCov
         reads = Set.new #: Set[String]
         outer = @sink
         @sink = reads
+        @testing = true
         started = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_second)
         ok = false
         begin
           ok = yield
         ensure
           @sink = outer
+          @testing = false
           elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_second) - started
           @tests[id] = Test.new(file, line, ok, elapsed.round(6).to_f, must_run, reads)
         end
@@ -64,7 +74,7 @@ module SimpleCov
       # charged to that file's tests rather than to no one.
       def loading(path, &)
         file = test_file(path)
-        return yield unless file
+        return aside(path, &) unless file
 
         outer = @sink
         @sink = (@loads[file] ||= Set.new)
@@ -73,6 +83,33 @@ module SimpleCov
         ensure
           @sink = outer
         end
+      end
+
+      # The first load of a project Ruby file by its absolute path, the way
+      # Zeitwerk autoloads, runs in boot's segment and reads into boot.
+      def aside(path)
+        relative = project_file(path) if File.absolute_path?(path.to_s)
+        return yield unless relative&.end_with?(".rb") && @aside.add?(relative)
+
+        outer = @sink
+        @sink = @boot_reads
+        begin
+          tracker = SimpleCov.test_tracker
+          tracker ? tracker.aside(BOOT) { yield } : yield
+        ensure
+          @sink = outer
+        end
+      end
+
+      # A forked worker's setup (Rails' `parallelize` creating and loading
+      # its database) runs before its first test, in whatever segment the
+      # parent had open: the last test file's load. It belongs to boot.
+      # A fork inside a test is that test's.
+      def forked
+        return if @testing
+
+        @sink = @boot_reads
+        SimpleCov.track_test(BOOT) {}
       end
 
       # From here to the next test, code and reads serve the tests of `file`.

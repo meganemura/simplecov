@@ -54,6 +54,10 @@ module SimpleCov
       def install_minitest_hook: (*untyped) -> untyped
     end
 
+    module ForkHook : _ForkHost
+      def _fork: () -> Integer
+    end
+
     module TrackerHooks : _TrackerHost
       def rspec_example_id: (untyped example) -> String
 

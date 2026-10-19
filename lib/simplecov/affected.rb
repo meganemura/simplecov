@@ -86,4 +86,5 @@ end
 
 SimpleCov.singleton_class.prepend(SimpleCov::Affected::Lifecycle)
 SimpleCov::TestTracker.singleton_class.prepend(SimpleCov::Affected::TrackerHooks)
+Process.singleton_class.prepend(SimpleCov::Affected::ForkHook)
 SimpleCov::Affected.start

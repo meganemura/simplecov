@@ -61,6 +61,15 @@ module SimpleCov
       end
     end
 
+    # Prepended to Process's singleton class, beside SimpleCov's own fork hook.
+    module ForkHook
+      def _fork
+        pid = super
+        Affected.recorder&.forked if pid.zero?
+        pid
+      end
+    end
+
     # Prepended to TestTracker's singleton class: the contexts are named by
     # stable test ids, and Affected's runner integration goes in beside
     # SimpleCov's own, inside it.

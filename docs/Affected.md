@@ -44,6 +44,12 @@ clears them, so the report's totals are unaffected. Affected changes three thing
   charged to the test file, which stands for all of its tests. Everything from the start of tracking to the first
   test file is charged to `(boot)`, which no test owns. RSpec's hooks are reached through its public configuration
   and the example groups' own `prepend_before` and `prepend_after`.
+- **Code that loads after boot.** A project file loaded later (Zeitwerk's autoload inside a test, a test file's
+  `require File.expand_path(...)`) runs its class body once per process, for whichever test comes first, though it
+  serves every later test as much. `track_tests` charges its first load to `(boot)`, as if the file had loaded before
+  the first test, and Affected charges the data files it reads during that load there too. A forked worker's setup
+  before its first test (Rails' `parallelize` preparing its database) is charged to `(boot)` too, rather than to the
+  test file the parent loaded last.
 - **What `coverage.json` has no place for**: each test's outcome and time, the data files it read through the File
   API (YAML fixtures, templates, JSON), and the sources of the test files the default profiles filter out of the
   report, because an `it` block is code a change can touch too.
@@ -93,7 +99,7 @@ Some changes reach every test, and then the whole suite runs, with the reason:
 | `read <path>` | A data file read before the first test file (by a helper, say) changed. |
 | `unmeasured <path>` | A project file loaded before coverage started changed. |
 | `unparsable <path>` | A changed file no longer parses. |
-| `boot <path> [<unit>]` | Code that ran before the first test file (an `RSpec.configure` block, a method a library calls as it loads) changed. |
+| `boot <path> [<unit>]` | Code that ran before the first test file, or as a project file loaded after it, changed (an `RSpec.configure` block, a method a library calls as it loads, an autoloaded concern's `included` block). |
 | `deleted <path>` | A file that ran before the first test file is gone. |
 | `no parser` | Prism cannot load on this platform. |
 
