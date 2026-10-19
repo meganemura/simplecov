@@ -28,7 +28,8 @@ module SimpleCov
     # Files whose change reruns every test, as globs against the project
     # root: what a process reads once and keeps (configuration, the schema,
     # fixtures, locales), so that only whichever test came first would show
-    # the read. Each call adds to the list.
+    # the read. Each call adds to the list; `require
+    # "simplecov/affected/rails"` adds Rails' own.
     def affected_global(*globs)
       affected_globals.concat(globs.flatten.map(&:to_s)).uniq!
       affected_globals

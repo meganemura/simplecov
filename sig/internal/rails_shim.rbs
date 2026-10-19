@@ -1,0 +1,5 @@
+# The parts of Rails and its neighbours that `simplecov/affected/rails`
+# touches, none of which SimpleCov depends on.
+module I18n
+  def self.load_path: () -> Array[untyped]
+end
