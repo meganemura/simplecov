@@ -20,6 +20,8 @@ module SimpleCov
 
       def exist?: (String path) -> bool
 
+      def glob: (String pattern) -> Array[String]
+
       def ruby_files: () -> Array[String]
     end
   end

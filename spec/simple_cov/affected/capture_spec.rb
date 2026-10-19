@@ -74,6 +74,21 @@ RSpec.describe SimpleCov::Affected::Capture do
     )
   end
 
+  it "records every file a global glob matches, with its digest" do
+    File.write(File.join(root, "schema.yml"), "b: 2\n")
+    globals = described_class.call(recorder, result, root, run: "run-1", globals: ["*.yml", "none/**/*"]).fetch("global")
+
+    expect(globals).to eq("*.yml" => {"schema.yml" => digest_of(File.join(root, "schema.yml")), "table.yml" => digest_of(File.join(root, "table.yml"))},
+      "none/**/*" => {})
+  end
+
+  it "leaves the coverage output out of a global glob" do
+    FileUtils.mkdir_p(File.join(root, "coverage"))
+    File.write(File.join(root, "coverage/.affected.json"), "{}")
+
+    expect(described_class.call(recorder, result, root, run: "run-1", globals: ["**/*.json"]).fetch("global")).to eq("**/*.json" => {})
+  end
+
   it "folds contexts no test owns into boot" do
     expect(document.fetch("boot")).to eq("lines" => {"lib/calc.rb" => [digest_of(lib), "5"]}, "reads" => [])
   end

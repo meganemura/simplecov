@@ -51,6 +51,40 @@ RSpec.describe SimpleCov::Affected::Selection do
 
   def edit(path, from, to) = write_source(path, File.read(File.join(project_root, path)).sub(from, to))
 
+  describe "global files" do
+    let(:document) do
+      write_source("config/app.yml", "a: 1\n")
+      recording({"lib/calc.rb" => calc, "spec/calc_spec.rb" => spec}, tests: tests, loads: loads,
+        global: {"config/**/*" => {"config/app.yml" => SimpleCov::Affected::Sidecar.digest("a: 1\n")}})
+    end
+
+    it "selects nothing while they are as recorded" do
+      document
+      expect(selected).to be_empty
+    end
+
+    it "runs everything when one changed" do
+      document
+      write_source("config/app.yml", "a: 2\n")
+
+      expect(selected).to eq(full: "global config/app.yml")
+    end
+
+    it "runs everything when one is added" do
+      document
+      write_source("config/locales/ja.yml", "ja: {}\n")
+
+      expect(selected).to eq(full: "global config/locales/ja.yml")
+    end
+
+    it "runs everything when one is gone" do
+      document
+      FileUtils.rm(File.join(project_root, "config/app.yml"))
+
+      expect(selected).to eq(full: "global config/app.yml")
+    end
+  end
+
   it "selects nothing when nothing changed" do
     document
     expect(selected).to be_empty

@@ -12,7 +12,9 @@ module SimpleCov
     # last run was and whatever happened since.
     #
     # Some changes reach every test, and the answer is then the full suite
-    # with the reason (`full`): another Ruby or lockfile, a data file read
+    # with the reason (`full`): another Ruby or lockfile, a file under a glob
+    # of `affected_global` (Rails' configuration, schema, fixtures, and
+    # locales, which a process reads once and keeps), a data file read
     # before the first test file, a project file loaded before coverage
     # started, a file that no longer parses, and code that ran before the
     # first test file or as a project file loaded after it (a
@@ -79,10 +81,23 @@ module SimpleCov
         document = @recording.document
         return "env" unless document.fetch("env").eql?(Sidecar.env(@tree.root))
 
+        global_change(document.fetch("global"))&.then { |path| return "global #{path}" }
+
         boot = document.fetch("boot")
         changed_read(boot.fetch("reads"))&.then { |path| return "read #{path}" }
         document.fetch("unmeasured").each { |path, digest| return "unmeasured #{path}" unless @tree.file_digest(path).eql?(digest) }
         unparsable || boot_reason(boot.fetch("lines"))
+      end
+
+      # A file a global glob matched then or matches now whose digest moved: it
+      # changed, it is new, or it is gone.
+      def global_change(globals)
+        globals.each do |glob, recorded|
+          (recorded.keys | @tree.glob(glob)).sort.each do |path|
+            return path unless @tree.file_digest(path).eql?(recorded[path])
+          end
+        end
+        nil
       end
 
       def boot_reason(lines)

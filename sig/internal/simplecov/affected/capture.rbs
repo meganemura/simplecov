@@ -3,7 +3,7 @@ module SimpleCov
     module Capture
       extend Capture
 
-      def call: (Recorder recorder, Result result, String root, run: String, ?loaded_features: Array[String]) -> Hash[String, untyped]?
+      def call: (Recorder recorder, Result result, String root, run: String, ?globals: Array[String], ?loaded_features: Array[String]) -> Hash[String, untyped]?
 
       private
 
@@ -18,6 +18,8 @@ module SimpleCov
       def owned_lines: (Hash[String, String] versions, Hash[String, String] latest, Recorder recorder, Hash[String, untyped] map) -> Hash[String, Hash[String, [String, String]]]
 
       def record_reads: (Hash[String, untyped] document, Recorder recorder, String root) -> void
+
+      def record_globals: (Hash[String, untyped] document, Recorder recorder, String root, Array[String] globals) -> void
 
       def record_unloaded: (Hash[String, untyped] document, Recorder recorder, String root) -> void
 
