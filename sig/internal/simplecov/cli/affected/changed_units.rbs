@@ -2,15 +2,17 @@ module SimpleCov
   module CLI
     module Affected
       module ChangedUnits
-        def self?.contexts: (Hash[String, untyped] entry, Hash[Integer, Integer] table, String? current) -> Set[Integer]?
+        LOAD_TIME: :load_time
+
+        def self?.contexts: (Hash[String, untyped] entry, Hash[Integer, Integer] table, String? current) -> (Set[Integer] | :load_time)?
 
         def self?.recorded_source: (untyped source) -> String?
 
         def self?.charged_units: (Units::Outline before, Units::Outline after) -> Array[Units::Unit]?
 
-        def self?.reached: (Array[Units::Unit] charged, Array[untyped] lines, Hash[Integer, Integer] table) -> Set[Integer]?
+        def self?.reached: (Array[Units::Unit] charged, Array[untyped] lines, Hash[Integer, Integer] table) -> (Set[Integer] | :load_time)?
 
-        def self?.traceable?: (Array[untyped] hits, bool recorded) -> bool
+        def self?.ran?: (untyped hits) -> bool
       end
     end
   end

@@ -74,13 +74,28 @@ module SimpleCov
         end
 
         # Only the tests that ran a changed unit, when the units can tell; every
-        # test touching the file otherwise.
+        # test touching the file otherwise. A file that ran with no test on
+        # record for it ran only as files loaded, so every test may depend on
+        # it, and so does a changed unit that ran that way.
         def select_covering(path, entry, state)
           table = covering_table(path, entry, state)
           return unless table
 
-          indices = ChangedUnits.contexts(entry, table, current_source(path, state)) || table.keys
-          indices.each { |index| select_context(state.fetch(:contexts).fetch(index), path, state) }
+          picked = ChangedUnits.contexts(entry, table, current_source(path, state))
+          picked ||= unrecorded?(entry, table) ? ChangedUnits::LOAD_TIME : table.keys
+          return note_load_time(path, state) if picked.equal?(ChangedUnits::LOAD_TIME)
+
+          picked.each { |index| select_context(state.fetch(:contexts).fetch(index), path, state) }
+        end
+
+        def unrecorded?(entry, table)
+          lines = entry["lines"]
+          table.empty? && lines.instance_of?(Array) && ChangedUnits.ran?(lines)
+        end
+
+        def note_load_time(path, state)
+          state.fetch(:triggers) << "#{path} changed code that ran while no test was being recorded, as files loaded"
+          path
         end
 
         # nil for a file the change deleted, which leaves no units to compare.

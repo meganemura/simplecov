@@ -22,6 +22,10 @@ module SimpleCov
 
         def self?.select_covering: (String path, untyped entry, untyped state) -> String?
 
+        def self?.unrecorded?: (untyped entry, Hash[Integer, Integer] table) -> bool
+
+        def self?.note_load_time: (String path, untyped state) -> String
+
         def self?.current_source: (String path, untyped state) -> String?
 
         def self?.covering_table: (String path, untyped entry, untyped state) -> untyped

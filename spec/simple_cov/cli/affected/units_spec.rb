@@ -190,10 +190,38 @@ RSpec.describe SimpleCov::CLI do
 
       before { edit!("flag.to_s", "flag.inspect", file: "lib/shapes.rb") }
 
-      it "selects every test touching the file" do
+      it "runs the whole suite" do
         affected
 
-        expect(stdout.string).to eq("spec/area_spec.rb\nspec/labels_spec.rb\nspec/ready_spec.rb\nspec/safe_spec.rb\n")
+        expect(stdout.string).to be_empty
+      end
+
+      it "says the change ran as files loaded" do
+        affected
+
+        expect(stderr.string).to start_with("simplecov affected: lib/shapes.rb changed code that ran while no test " \
+                                            "was being recorded, as files loaded\n")
+      end
+    end
+
+    context "with an edit inside a method that ran while no test was recorded" do
+      before { edit!("[1, 2]", "[1, 3]") }
+
+      it "runs the whole suite" do
+        expect(JSON.parse(affected("--json") && stdout.string)).to include("full_suite" => true, "tests" => [])
+      end
+    end
+
+    context "with an edit to a unit that ran as files loaded, beside one a test ran" do
+      before do
+        edit!("[1, 2]", "[1, 3]")
+        edit!("a + b", "a - b")
+      end
+
+      it "runs the whole suite" do
+        affected
+
+        expect(stdout.string).to be_empty
       end
     end
 
@@ -287,7 +315,6 @@ RSpec.describe SimpleCov::CLI do
       "that removes a method" => ["  def add(a, b)\n    a + b\n  end\n", ""],
       "that renames a method" => ["def add(a, b)", "def plus(a, b)"],
       "that defines a method inside a block" => ["item * 2", "def helper\n        1\n      end\n      item * 2"],
-      "inside a method that ran while no test was recorded" => ["[1, 2]", "[1, 3]"],
       "that no longer parses" => ["a + b", "a +"]
     }.each do |where, (from, to)|
       context "with an edit #{where}" do

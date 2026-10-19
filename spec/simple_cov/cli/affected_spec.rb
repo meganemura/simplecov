@@ -15,7 +15,7 @@ RSpec.describe SimpleCov::CLI do
       {
         "lib/result.rb" => "# original\n", "lib/quiet.rb" => "# original\n",
         "lib/odd.rb" => "# original\n", "lib/stale.rb" => "# original\n",
-        "lib/plain.rb" => "# original\n", "toplevel_test.rb" => "# original\n",
+        "lib/plain.rb" => "# original\n", "toplevel_test.rb" => "# original\n", "lib/booted.rb" => "# original\n",
         "lib/suffixless.rb" => "# original\n", "spec/no_suffix" => "# original\n",
         "lib/plain2.rb" => "# original\n", "spec/test_helper.rb" => "# original\n",
         "spec/result_spec.rb" => "# original\n", "spec/source_file_spec.rb" => "# original\n",
@@ -36,7 +36,8 @@ RSpec.describe SimpleCov::CLI do
         ],
         "coverage" => {
           File.join(tmp, "lib/result.rb") => {"lines" => [nil, 1, 2, 0], "contexts" => {"0" => "6", "1" => "4"}},
-          File.join(tmp, "lib/quiet.rb") => {"lines" => [1, nil]},
+          File.join(tmp, "lib/quiet.rb") => {"lines" => [0, nil]},
+          File.join(tmp, "lib/booted.rb") => {"lines" => [1, nil]},
           File.join(tmp, "lib/odd.rb") => {"lines" => [1], "contexts" => {"2" => "1"}},
           File.join(tmp, "lib/stale.rb") => {"lines" => [1], "contexts" => {"3" => "1"}},
           File.join(tmp, "lib/plain.rb") => {"lines" => [1], "contexts" => {"4" => "1"}},
@@ -169,6 +170,22 @@ RSpec.describe SimpleCov::CLI do
 
       it "notes it on stderr" do
         expect(stderr.string).to eq("simplecov affected: no recorded test touches the changed code\n")
+      end
+    end
+
+    context "when the change is to a file that ran only while no test was recorded" do
+      before do
+        file!("lib/booted.rb", "# changed\n")
+        run_in_repo("affected", "--input", json_path)
+      end
+
+      it "prints nothing, so a bare runner runs the whole suite" do
+        expect(stdout.string).to be_empty
+      end
+
+      it "names the load-time trigger" do
+        expect(stderr.string).to eq("simplecov affected: lib/booted.rb changed code that ran while no test was being " \
+                                    "recorded, as files loaded\nsimplecov affected: falling back to the full suite\n")
       end
     end
 
