@@ -52,7 +52,9 @@ clears them, so the report's totals are unaffected. Affected changes three thing
   test file the parent loaded last.
 - **What `coverage.json` has no place for**: each test's outcome and time, the data files it read through the File
   API (YAML fixtures, templates, JSON), and the sources of the test files the default profiles filter out of the
-  report, because an `it` block is code a change can touch too.
+  report, because an `it` block is code a change can touch too. Under `cover_views`, a template a context ran lines
+  of is a read of that context too: eval coverage charges a compiled template's lines to the test that rendered it,
+  even after the first render read the file and compiled it.
 
 All of it goes to `coverage/.affected.json`, beside the report and independent of its format. One test's record is
 one object:

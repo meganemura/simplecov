@@ -22,6 +22,7 @@ module SimpleCov
         versions = {} #: Hash[String, String]
         document = blank(root)
         record_files(document, versions, recorder, result.original_result)
+        record_templates(recorder, map.to_h)
         document.fetch("runs")[run] = document.fetch("latest").dup
         record_contexts(document, versions, recorder, map.to_h, run)
         record_reads(document, recorder, root)
@@ -61,6 +62,24 @@ module SimpleCov
         File.read(path, encoding: Encoding::UTF_8)
       rescue SystemCallError
         nil
+      end
+
+      # Under `cover_views` a rendered template has lines of its own: ActionView
+      # and ViewComponent compile it with its path, so eval coverage charges
+      # it to each test that rendered it. A template is a data file to the
+      # selection, so each context that ran a line of one read it.
+      def record_templates(recorder, map)
+        ids = map.fetch("contexts")
+        map.fetch("files").each do |path, table|
+          relative = recorder.project_file(path)
+          next if relative.nil? || relative.end_with?(".rb")
+
+          table.each_key { |index| reads_of(recorder, ids.fetch(Integer(index, 10))) << relative }
+        end
+      end
+
+      def reads_of(recorder, id)
+        recorder.tests[id]&.reads || recorder.loads[id] || recorder.boot_reads
       end
 
       # A context the recorder never named (a hand-written `track_test` around

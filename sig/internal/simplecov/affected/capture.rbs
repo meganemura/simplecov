@@ -11,6 +11,10 @@ module SimpleCov
 
       def record_files: (Hash[String, untyped] document, Hash[String, String] versions, Recorder recorder, Hash[String, untyped] coverage) -> void
 
+      def record_templates: (Recorder recorder, Hash[String, untyped] map) -> void
+
+      def reads_of: (Recorder recorder, String id) -> Set[String]
+
       def read_source: (String path) -> String?
 
       def record_contexts: (Hash[String, untyped] document, Hash[String, String] versions, Recorder recorder, Hash[String, untyped] map, String run) -> void
