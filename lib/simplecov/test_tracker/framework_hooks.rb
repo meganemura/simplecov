@@ -50,6 +50,24 @@ module SimpleCov
         group.subclasses.flat_map { |child| [child, *nested_groups(child)] }
       end
 
+      # The id RSpec's examples give a spec file, when `file` is one of the
+      # spec files RSpec runs (it loads each by its expanded path), and nil
+      # otherwise. `files_to_run` is RSpec's public list, which a spec helper
+      # may read too, and the set built from it is kept while the list is.
+      def rspec_spec_file(file, rspec = rspec_module)
+        return nil unless rspec
+
+        files = rspec.configuration.files_to_run
+        cached = @rspec_spec_files
+        if cached.nil? || !cached.first.equal?(files)
+          cached = [files, files.to_set { |path| File.expand_path(path) }] #: [Array[String], Set[String]]
+          @rspec_spec_files = cached
+        end
+        return nil unless cached.last.include?(file)
+
+        file.delete_prefix(File.join(Dir.pwd, ""))
+      end
+
       # The RSpec this process has, if it has one. A Minitest-only suite has
       # none, and no example can make this process into one: hiding the RSpec
       # constant takes down the very runner asking the question.

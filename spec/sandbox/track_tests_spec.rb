@@ -66,18 +66,29 @@ RSpec.describe "track_tests", :sandbox do
           end
         end
       RUBY
-      run_command_and_expect_success("bundle exec rspec spec/outside_spec.rb --order defined")
+      write_file("spec/later_spec.rb", <<~RUBY)
+        require "spec_helper"
+
+        LATER = SomeClass.new("later").compare_with("other")
+
+        RSpec.describe("later") { it("reads what the load left") { expect(LATER).to be(false) } }
+      RUBY
+      run_command_and_expect_success("bundle exec rspec spec/outside_spec.rb spec/later_spec.rb --order defined")
     end
 
     let(:some_class) { File.join(sandbox_dir, "lib/faked_project/some_class.rb") }
     let(:untested_class) { File.join(sandbox_dir, "lib/faked_project/untested_class.rb") }
 
-    it "charges what a spec file runs as it loads to boot" do
+    it "charges what the spec file that starts SimpleCov runs as it loads to boot" do
       expect(stored_contexts.covering(some_class, 12)).to eq(["(boot)"])
     end
 
+    it "charges what a spec file RSpec loads runs as it loads to that file" do
+      expect(stored_contexts.covering(some_class, 19)).to eq(["spec/later_spec.rb"])
+    end
+
     it "charges a nested group's before(:context) to its spec file" do
-      expect(stored_contexts.covering(some_class, 16)).to eq(["spec/outside_spec.rb"])
+      expect(stored_contexts.covering(some_class, 17)).to eq(["spec/outside_spec.rb"])
     end
 
     it "charges the class body of a file a test loaded to boot" do

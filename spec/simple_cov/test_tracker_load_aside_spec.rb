@@ -158,6 +158,15 @@ RSpec.describe SimpleCov::TestTracker do
       expect(Coverage).to have_received(:peek_result).exactly(1).times
     end
 
+    it "runs RSpec's load of a spec file in that file's segment" do
+      allow(described_class).to receive(:rspec_spec_file).with("/proj/spec/a_spec.rb").and_return("spec/a_spec.rb")
+      allow(Coverage).to receive(:peek_result).and_return({file => {lines: [0]}}, {file => {lines: [0]}},
+        {file => {lines: [1]}}, {file => {lines: [1]}})
+      tracker.track("(boot)") { tracker.loading("/proj/spec/a_spec.rb", :load) { true } }
+
+      expect(covering(1)).to eq(["spec/a_spec.rb"])
+    end
+
     it "runs only the first load of a path in boot's segment" do
       2.times { tracker.track("t") { tracker.loading("/proj/lib/script.rb", :load) { true } } }
 
@@ -191,6 +200,40 @@ RSpec.describe SimpleCov::TestTracker do
 
     it "charges the method the test called to the test" do
       expect(tracker.recorded_map.covering(lazy, 3)).to eq(["spec/lazy_spec.rb:1"])
+    end
+  end
+
+  describe ".rspec_spec_file" do
+    let(:files) { ["spec/a_spec.rb", "/elsewhere/b_spec.rb"] }
+    let(:rspec) do
+      list = files
+      class_double(RSpec, configuration: instance_double(RSpec::Core::Configuration, files_to_run: list))
+    end
+
+    after { described_class.instance_variable_set(:@rspec_spec_files, nil) }
+
+    it "names a spec file RSpec runs the way its examples do" do
+      expect(described_class.rspec_spec_file(File.expand_path("spec/a_spec.rb"), rspec)).to eq("spec/a_spec.rb")
+    end
+
+    it "keeps a spec file outside the working directory absolute" do
+      expect(described_class.rspec_spec_file("/elsewhere/b_spec.rb", rspec)).to eq("/elsewhere/b_spec.rb")
+    end
+
+    it "names no other file" do
+      expect(described_class.rspec_spec_file(File.expand_path("lib/a.rb"), rspec)).to be_nil
+    end
+
+    it "names nothing without RSpec" do
+      expect(described_class.rspec_spec_file(File.expand_path("spec/a_spec.rb"), nil)).to be_nil
+    end
+
+    it "reads a new list once RSpec has one" do
+      described_class.rspec_spec_file(File.expand_path("lib/a.rb"), rspec)
+      files.replace(["spec/c_spec.rb"])
+      allow(rspec.configuration).to receive(:files_to_run).and_return(files.dup)
+
+      expect(described_class.rspec_spec_file(File.expand_path("spec/c_spec.rb"), rspec)).to eq("spec/c_spec.rb")
     end
   end
 

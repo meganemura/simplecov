@@ -50,13 +50,20 @@ module SimpleCov
       end
     end
 
-    # Runs the block, a `require` or `load` of `feature`, in boot's segment
-    # when it is a Ruby file's first load and a test's segment is open. A
+    # Runs the block, a `require` or `load` of `feature`, in the spec file's
+    # segment when RSpec is loading one of its spec files, so what the file
+    # runs as it loads serves its own examples rather than boot, and in
+    # boot's segment when it is a Ruby file's first load and a test's segment
+    # is open. A
     # `require` that turns out to load nothing is remembered, so a feature
     # required on every call costs a lookup, not a coverage peek.
     def loading(feature, kind)
       segment = @segment
-      return yield if segment.nil? || segment.id.eql?(BOOT) || !first_load?(feature, kind)
+      return yield if segment.nil?
+
+      spec_file = TestTracker.rspec_spec_file(feature) if kind.equal?(:load)
+      return aside(context_id(spec_file)) { yield } if spec_file
+      return yield if segment.id.eql?(BOOT) || !first_load?(feature, kind)
 
       loaded = aside(BOOT) { yield }
       @loaded << feature unless loaded

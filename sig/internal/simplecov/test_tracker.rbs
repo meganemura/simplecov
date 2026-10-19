@@ -60,6 +60,10 @@ module SimpleCov
 
     def self.nested_groups: (untyped group) -> Array[untyped]
 
+    self.@rspec_spec_files: [Array[String], Set[String]]?
+
+    def self.rspec_spec_file: (untyped file, ?untyped rspec) -> String?
+
     def self.reset_rspec_hook!: () -> void
 
     def self.install_minitest_hook: (?untyped test_case) -> void
