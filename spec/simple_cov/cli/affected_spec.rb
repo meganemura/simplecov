@@ -11,6 +11,26 @@ RSpec.describe SimpleCov::CLI do
   include_context "a CLI"
 
   describe "affected subcommand", mutant_expression: "SimpleCov::CLI::Affected*" do
+    # A file every test loads and none calls into: its class line, its macro,
+    # its constant and its def line ran as it loaded, its method body never did.
+    def loaded_source
+      <<~RUBY
+        class Loaded
+          attr_reader :name
+
+          LIMITS = {
+            low: 1
+          }.freeze
+
+          def greet
+            "hi"
+          end
+        end
+      RUBY
+    end
+
+    # A file a recorded test calls into, whose macro still ran only as it loaded.
+    def tested_source = "class Tested\n  attr_reader :name\n  def go\n    1\n  end\nend\n"
     let(:fixture_files) do
       {
         "lib/result.rb" => "# original\n", "lib/quiet.rb" => "# original\n",
@@ -20,7 +40,9 @@ RSpec.describe SimpleCov::CLI do
         "lib/plain2.rb" => "# original\n", "spec/test_helper.rb" => "# original\n",
         "spec/result_spec.rb" => "# original\n", "spec/source_file_spec.rb" => "# original\n",
         "spec/helper.rb" => "# original\n", "Gemfile.lock" => "# original\n",
-        ".gitignore" => "coverage.json\nout.txt\n"
+        ".gitignore" => "coverage.json\nout.txt\n",
+        "lib/loaded.rb" => loaded_source, "lib/tested.rb" => tested_source,
+        "lib/lineless.rb" => "# original\n", "lib/skipped.rb" => "SKIPPED = 1\n"
       }
     end
     let(:tmp) { GitFixture.checkout(fixture_files) }
@@ -41,7 +63,11 @@ RSpec.describe SimpleCov::CLI do
           File.join(tmp, "lib/stale.rb") => {"lines" => [1], "contexts" => {"3" => "1"}},
           File.join(tmp, "lib/plain.rb") => {"lines" => [1], "contexts" => {"4" => "1"}},
           File.join(tmp, "lib/suffixless.rb") => {"lines" => [1], "contexts" => {"5" => "1"}},
-          File.join(tmp, "lib/plain2.rb") => {"lines" => [1], "contexts" => {"4" => "1"}}
+          File.join(tmp, "lib/plain2.rb") => {"lines" => [1], "contexts" => {"4" => "1"}},
+          File.join(tmp, "lib/loaded.rb") => {"lines" => [1, 1, nil, 1, nil, nil, nil, 1, 0, nil, nil]},
+          File.join(tmp, "lib/tested.rb") => {"lines" => [1, 1, 1, 2, nil, nil], "contexts" => {"0" => "8"}},
+          File.join(tmp, "lib/lineless.rb") => {"contexts" => {"0" => "1"}},
+          File.join(tmp, "lib/skipped.rb") => {"lines" => ["ignored"]}
         }
       }
     end
@@ -159,6 +185,240 @@ RSpec.describe SimpleCov::CLI do
 
       it "notes it on stderr" do
         expect(stderr.string).to eq("simplecov affected: no recorded test touches the changed code\n")
+      end
+    end
+
+    describe "a change to code that ran while files loaded" do
+      def change(path, source, from, to)
+        file!(path, source.sub(from, to))
+        run_in_repo("affected", "--input", json_path)
+      end
+
+      def load_time_trigger(location)
+        "simplecov affected: the change touches #{location}, which ran only while no test was being recorded, " \
+          "as files loaded\nsimplecov affected: falling back to the full suite\n"
+      end
+
+      let(:untouched) { "simplecov affected: no recorded test touches the changed code\n" }
+
+      it "runs the whole suite when a line that ran with no test on record changed" do
+        change("lib/loaded.rb", loaded_source, "attr_reader :name", "attr_reader :title")
+
+        expect([stdout.string, stderr.string]).to eq(["", load_time_trigger("lib/loaded.rb:2")])
+      end
+
+      it "runs the whole suite when such a line changed in a file a recorded test touches" do
+        change("lib/tested.rb", tested_source, "attr_reader :name", "attr_reader :title")
+
+        expect([stdout.string, stderr.string]).to eq(["", load_time_trigger("lib/tested.rb:2")])
+      end
+
+      it "selects the touching tests alone for a change to a line a recorded test ran" do
+        change("lib/tested.rb", tested_source, "    1", "    2")
+
+        expect([stdout.string, stderr.string]).to eq(["spec/result_spec.rb\n", ""])
+      end
+
+      it "names the first line of a statement that spans lines" do
+        change("lib/loaded.rb", loaded_source, "low: 1", "low: 2")
+
+        expect(stderr.string).to eq(load_time_trigger("lib/loaded.rb:4"))
+      end
+
+      it "runs the whole suite for a line of code added below such a line" do
+        change("lib/loaded.rb", loaded_source, "attr_reader :name\n", "attr_reader :name\n  attr_reader :title\n")
+
+        expect(stderr.string).to eq(load_time_trigger("lib/loaded.rb:2"))
+      end
+
+      it "runs the whole suite for a blank line below such a line rewritten as code" do
+        change("lib/loaded.rb", loaded_source, "name\n\n", "name\n  attr_reader :title\n")
+
+        expect(stderr.string).to eq(load_time_trigger("lib/loaded.rb:2"))
+      end
+
+      it "selects nothing for a change inside a method body that never ran" do
+        change("lib/loaded.rb", loaded_source, '"hi"', '"hello"')
+
+        expect([stdout.string, stderr.string]).to eq(["", untouched])
+      end
+
+      it "selects nothing for a line added to a method body that never ran" do
+        change("lib/loaded.rb", loaded_source, "def greet\n", "def greet\n    warn\n")
+
+        expect([stdout.string, stderr.string]).to eq(["", untouched])
+      end
+
+      # Loading a def line only names the method; a test that called it would be
+      # on record for its body.
+      it "selects nothing for a change to the def line of a method no test called" do
+        change("lib/loaded.rb", loaded_source, "def greet", "def greet(name)")
+
+        expect([stdout.string, stderr.string]).to eq(["", untouched])
+      end
+
+      it "selects nothing for whole methods added below load-time code" do
+        change("lib/loaded.rb", loaded_source, "name\n\n", "name\n\n  def wave = \"o/\"\n\n  def nod\n    1\n  end\n\n")
+
+        expect([stdout.string, stderr.string]).to eq(["", untouched])
+      end
+
+      it "runs the whole suite for added code that is more than whole methods" do
+        change("lib/loaded.rb", loaded_source, "name\n\n", "name\n\n  def wave = \"o/\"\n  attr_reader :title\n\n")
+
+        expect(stderr.string).to eq(load_time_trigger("lib/loaded.rb:2"))
+      end
+
+      it "runs the whole suite when such a line is deleted" do
+        change("lib/loaded.rb", loaded_source, "  attr_reader :name\n", "")
+
+        expect(stderr.string).to eq(load_time_trigger("lib/loaded.rb:2"))
+      end
+
+      it "runs the whole suite when a file that ran as it loaded is deleted" do
+        File.delete(File.join(tmp, "lib/loaded.rb"))
+        run_in_repo("affected", "--input", json_path)
+
+        expect(stderr.string).to eq(load_time_trigger("lib/loaded.rb:1"))
+      end
+
+      it "counts a class line, which defines the constant as it loads" do
+        change("lib/loaded.rb", loaded_source, "class Loaded", "class Unloaded")
+
+        expect(stderr.string).to eq(load_time_trigger("lib/loaded.rb:1"))
+      end
+
+      it "selects nothing for a line added above the first line" do
+        change("lib/loaded.rb", loaded_source, "class Loaded", "require \"set\"\nclass Loaded")
+
+        expect([stdout.string, stderr.string]).to eq(["", untouched])
+      end
+
+      it "selects nothing for a method added with its body" do
+        change("lib/loaded.rb", loaded_source, "name\n\n", "name\n\n  def nod\n    1\n  end\n\n")
+
+        expect([stdout.string, stderr.string]).to eq(["", untouched])
+      end
+
+      it "reads each changed file's own lines" do
+        file!("lib/loaded.rb", loaded_source.sub('"hi"', '"hello"'))
+        change("lib/tested.rb", tested_source, "attr_reader :name", "attr_reader :title")
+
+        expect(stderr.string).to eq(load_time_trigger("lib/tested.rb:2"))
+      end
+
+      it "reads the lines whatever git's color and external diff settings" do
+        git_in_repo("config", "color.diff", "always")
+        git_in_repo("config", "diff.external", "true")
+        change("lib/loaded.rb", loaded_source, "attr_reader :name", "attr_reader :title")
+
+        expect(stderr.string).to eq(load_time_trigger("lib/loaded.rb:2"))
+      end
+
+      it "selects the touching tests for an entry with no lines array" do
+        file!("lib/lineless.rb", "LINELESS = 1\n")
+        run_in_repo("affected", "--input", json_path)
+
+        expect([stdout.string, stderr.string]).to eq(["spec/result_spec.rb\n", ""])
+      end
+
+      it "selects nothing for a change to a line :nocov: skipped" do
+        change("lib/skipped.rb", "SKIPPED = 1\n", "1", "2")
+
+        expect([stdout.string, stderr.string]).to eq(["", untouched])
+      end
+
+      it "skips the check without a base, as simplecov watch builds it" do
+        file!("lib/loaded.rb", loaded_source.sub("attr_reader :name", "attr_reader :title"))
+        selection = SimpleCov::CLI::Affected::Selection.build(["lib/loaded.rb"], payload, payload["contexts"],
+          {input: json_path}, stderr, root: tmp, base: nil)
+
+        expect(selection).to eq(tests: [], triggers: [])
+      end
+
+      it "selects nothing for a method whose endless body spans lines" do
+        change("lib/loaded.rb", loaded_source, "name\n", "name\n  def nod =\n    1\n")
+
+        expect([stdout.string, stderr.string]).to eq(["", untouched])
+      end
+
+      it "selects nothing for a removed blank line below load-time code" do
+        change("lib/loaded.rb", loaded_source, "name\n\n", "name\n")
+
+        expect([stdout.string, stderr.string]).to eq(["", untouched])
+      end
+
+      it "keeps the base line numbers past added lines" do
+        source = loaded_source.sub("class Loaded", "# Loaded\nclass Loaded").sub("name\n\n", "name\n  X = 1\n")
+        file!("lib/loaded.rb", source)
+        run_in_repo("affected", "--input", json_path)
+
+        expect(stderr.string).to eq(load_time_trigger("lib/loaded.rb:2"))
+      end
+
+      it "reads every change in a file" do
+        file!("lib/loaded.rb", "require \"set\"\n#{loaded_source.sub("attr_reader :name", "attr_reader :title")}")
+        run_in_repo("affected", "--input", json_path)
+
+        expect(stderr.string).to eq(load_time_trigger("lib/loaded.rb:2"))
+      end
+
+      it "selects nothing for a comment added below load-time code" do
+        change("lib/loaded.rb", loaded_source, "attr_reader :name\n", "attr_reader :name\n  # the name\n")
+
+        expect([stdout.string, stderr.string]).to eq(["", untouched])
+      end
+    end
+
+    context "with a load-time line changed on the base after the branch point" do
+      before do
+        git_in_repo("checkout", "-q", "-b", "feature")
+        git_in_repo("checkout", "-q", "main")
+        file!("lib/loaded.rb", loaded_source.sub("attr_reader :name", "attr_reader :title"))
+        commit!("change on main")
+        git_in_repo("checkout", "-q", "feature")
+        file!("lib/loaded.rb", loaded_source.sub('"hi"', '"hello"'))
+        run_in_repo("affected", "--input", json_path)
+      end
+
+      it "reads the lines against the merge base, not the base's tip" do
+        expect(stderr.string).to eq("simplecov affected: no recorded test touches the changed code\n")
+      end
+    end
+
+    context "with a change to code that ran while files loaded, under --run" do
+      let(:script) { "#{write_out("ARGV.join(' ').inspect")}; exit 1" }
+
+      before { file!("lib/loaded.rb", loaded_source.sub("attr_reader :name", "attr_reader :title")) }
+
+      it "answers the failure of the whole suite" do
+        expect(run_in_repo("affected", "--input", json_path, "--run", RbConfig.ruby, "-e", script)).to eq(1)
+      end
+
+      it "runs the command bare" do
+        run_in_repo("affected", "--input", json_path, "--run", RbConfig.ruby, "-e", script)
+
+        expect(File.read(out_path)).to eq('""')
+      end
+    end
+
+    context "when git fails while reading the lines a change touched" do
+      before do
+        failed = instance_double(Process::Status, success?: false)
+        allow(Open3).to receive(:capture3).and_call_original
+        allow(Open3).to receive(:capture3)
+          .with("git", "-C", anything, "diff", /\A--unified=/, any_args).and_return(["", "boom\n", failed])
+        file!("lib/loaded.rb", loaded_source.sub("attr_reader :name", "attr_reader :title"))
+      end
+
+      it "errors" do
+        expect(run_in_repo("affected", "--input", json_path)).to eq(1)
+      end
+
+      it "relays what git said" do
+        run_in_repo("affected", "--input", json_path)
+
+        expect(stderr.string).to eq("simplecov affected: `git diff` failed: boom\n")
       end
     end
 

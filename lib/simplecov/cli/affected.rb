@@ -75,7 +75,8 @@ module SimpleCov
         opts[:root] = diffed.fetch(:root)
         return no_changes(opts, stdout, stderr) if diffed.fetch(:changed).empty?
 
-        selection = Selection.build(diffed.fetch(:changed), document, contexts, opts, stderr, root: diffed.fetch(:root))
+        selection = Selection.build(diffed.fetch(:changed), document, contexts, opts, stderr,
+          root: diffed.fetch(:root), base: opts.fetch(:base))
         return 1 unless selection
 
         deliver(selection, opts, stdout, stderr)

@@ -9,6 +9,7 @@ Unreleased
 * The HTML report is usable on phones. On narrow screens the theme toggles shrink to icons, a report with several groups picks them from a dropdown instead of a row of tabs, the file list drops its coverage bars and covered/total counts and wraps long paths, and the source view stacks its header. On small or short screens the source header and footer scroll away with the code instead of staying pinned. Below 960px wide the code font scales so 80 columns fit beside the line numbers and hit counts. See https://github.com/simplecov-ruby/simplecov/issues/1312.
 
 ## Bugfixes
+* `simplecov affected` runs the full suite when a changed line ran with no test on record, such as code that runs while files load, instead of selecting too few tests.
 * A merge keeps the method and branch hits of a process that recorded no line hit for the file. A forked worker inherits the files its parent loaded with their counters cleared, and calling a method whose body shares its `def` line (a short endless method, for instance) then records a method hit and no line hit. The merge took that for a never-loaded file and dropped its hits in favor of the parent's zeroes, so methods the workers exercised were reported as uncovered. A file now counts as executed when any line, method, or branch arm was hit. See https://github.com/simplecov-ruby/simplecov/issues/1310.
 
 ## Performance

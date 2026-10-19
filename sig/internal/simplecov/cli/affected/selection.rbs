@@ -4,9 +4,9 @@ module SimpleCov
       module Selection
         TEST_FILE_NAME: Regexp
 
-        def self?.build: (Array[String] changed, untyped document, Array[String] contexts, untyped opts, untyped stderr, root: String) -> Hash[Symbol, Array[String]]?
+        def self?.build: (Array[String] changed, untyped document, Array[String] contexts, untyped opts, untyped stderr, root: String, base: String?) -> Hash[Symbol, Array[String]]?
 
-        def self?.initial_state: (Array[String] changed, Array[String] contexts, Hash[String, untyped] coverage, untyped opts, untyped stderr, root: String) -> Hash[Symbol, untyped]
+        def self?.initial_state: (Array[String] changed, Array[String] contexts, Hash[String, untyped] coverage, untyped opts, untyped stderr, root: String, base: String?) -> Hash[Symbol, untyped]
 
         def self?.on_disk?: (String path, untyped state) -> bool
 
@@ -21,6 +21,12 @@ module SimpleCov
         def self?.select_test_file: (String path, untyped state, ?note_deleted: bool) -> String
 
         def self?.select_covering: (String path, untyped entry, untyped state) -> String?
+
+        def self?.trigger_on_unrecorded_change: (String path, Array[untyped] counts, Hash[Integer, Integer] table, untyped state) -> String?
+
+        def self?.ran_unrecorded?: (Integer | String count, Integer recorded, Integer number) -> bool
+
+        def self?.statement_start: (Array[untyped] counts, Integer number) -> Integer?
 
         def self?.covering_table: (String path, untyped entry, untyped state) -> untyped
 

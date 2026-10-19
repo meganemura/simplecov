@@ -6,7 +6,21 @@ module SimpleCov
 
         def self?.repository_toplevel: (untyped stderr) -> String?
 
+        WHOLE_FILE_CONTEXT: Integer
+
+        CODE_LINE: Regexp
+
+        DEF_LINE: Regexp
+
         def self?.list: (String command, Array[String] argv, untyped stderr) -> Array[String]?
+
+        def self?.git_output: (String command, Array[String] argv, untyped stderr) -> String?
+
+        def self?.report_lines_changed: (String root, String base, String path, untyped stderr) -> { source: Array[String], changed: Array[Integer] }?
+
+        def self?.parse_report_lines_changed: (String patch) -> { source: Array[String], changed: Array[Integer] }
+
+        def self?.adds_only_methods?: (Array[String] lines) -> bool
 
         def self?.report: (untyped stderr, String message) -> nil
       end

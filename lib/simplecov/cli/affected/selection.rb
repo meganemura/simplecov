@@ -8,24 +8,24 @@ module SimpleCov
 
         extend self
 
-        def build(changed, document, contexts, opts, stderr, root:)
+        def build(changed, document, contexts, opts, stderr, root:, base:)
           none = {} #: Hash[String, untyped]
           coverage = document.fetch("coverage", none)
           unless coverage.instance_of?(Hash)
             return CoverageFile.report_invalid(stderr, "affected", opts.fetch(:input), '"coverage" must be an object')
           end
 
-          state = initial_state(changed, contexts, coverage, opts, stderr, root: root)
+          state = initial_state(changed, contexts, coverage, opts, stderr, root: root, base: base)
           return nil unless changed.all? { |path| classify(path, state) }
 
           {tests: state.fetch(:tests).uniq.sort, triggers: state.fetch(:triggers)}
         end
 
-        def initial_state(changed, contexts, coverage, opts, stderr, root:)
+        def initial_state(changed, contexts, coverage, opts, stderr, root:, base:)
           {
             tests: [], triggers: [], changed: changed, contexts: contexts,
             known: contexts.each_with_object(Set.new) { |id, set| set << test_file_of(id) },
-            index: CoverageFile.exact_index(coverage), root: root, opts: opts, stderr: stderr
+            index: CoverageFile.exact_index(coverage), root: root, base: base, opts: opts, stderr: stderr
           } #: Hash[Symbol, untyped]
         end
 
@@ -74,7 +74,41 @@ module SimpleCov
 
         def select_covering(path, entry, state)
           table = covering_table(path, entry, state)
-          table&.each_key { |index| select_context(state.fetch(:contexts).fetch(index), path, state) }
+          return unless table
+
+          table.each_key { |index| select_context(state.fetch(:contexts).fetch(index), path, state) }
+          trigger_on_unrecorded_change(path, Array(entry["lines"]), table, state)
+        end
+
+        # A line that ran with no test on record ran while files loaded, so no
+        # recorded test stands for it. Loading a def line only names the method.
+        def trigger_on_unrecorded_change(path, counts, table, state)
+          base = state.fetch(:base)
+          return path unless base
+
+          lines = ChangedFiles.report_lines_changed(state.fetch(:root), base, path, state.fetch(:stderr))
+          return unless lines
+
+          recorded = table.each_value.reduce(0, :|)
+          line = lines.fetch(:changed).filter_map { |number| statement_start(counts, number) }.find do |number|
+            ran_unrecorded?(counts.fetch(number - 1), recorded, number) &&
+              !ChangedFiles::DEF_LINE.match?(lines.fetch(:source).fetch(number - 1))
+          end
+          if line
+            state.fetch(:triggers) << "the change touches #{path}:#{line}, which ran only while no test was being " \
+              "recorded, as files loaded"
+          end
+          path
+        end
+
+        # A line skipped by `:nocov:` reads "ignored" and has no count.
+        def ran_unrecorded?(count, recorded, number)
+          count.to_i.positive? && !recorded.anybits?(1 << (number - 1))
+        end
+
+        # A statement that spans lines is counted on its first.
+        def statement_start(counts, number)
+          counts.first(number).rindex(&:itself)&.succ
         end
 
         def covering_table(path, entry, state)

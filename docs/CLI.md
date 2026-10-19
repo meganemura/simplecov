@@ -281,6 +281,10 @@ substitution (`bundle exec rspec $(simplecov affected)` runs everything when the
 `--run` the command runs bare, which means the full suite for the usual runners. `--json` emits
 `{"full_suite": ..., "triggers": [...], "tests": [...]}` for tooling.
 
+A changed line that ran with no test on record, such as code that runs while files load, also falls back to the full
+suite. A change to a `def` line or to a method body that never ran selects as before. `simplecov watch` does not apply
+this check, because it knows the changed files but not the changed lines.
+
 Like `patch`, the diff is anchored at the repository root, so a run from a subdirectory selects over the whole change
 (with `--run` starting the runner at that root), and changed files resolve against the report by exact path, so a
 lookalike entry elsewhere in the report can never stand in for a changed file the report does not carry.
