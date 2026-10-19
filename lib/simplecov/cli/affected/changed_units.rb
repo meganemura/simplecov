@@ -15,8 +15,8 @@ module SimpleCov
       # nested unit's lines count for every unit around it. Anything that cannot
       # be pinned to units answers nil, which means the whole file, the rule
       # before units: a change outside every unit, a changed head, a method added
-      # or removed, a unit whose entry line coverage does not report, a unit that
-      # ran while no test was being recorded (code run as files load, whose
+      # or removed, a unit none of whose lines coverage reports, a unit that ran
+      # while no test was being recorded (code run as files load, whose
       # effects any test may read), and a source that is missing, unrecorded, or
       # does not parse.
       module ChangedUnits
@@ -62,21 +62,22 @@ module SimpleCov
           covered = table.each_value.reduce(0, :|)
           picked = Set.new #: Set[Integer]
           charged.each do |unit|
-            return nil unless traceable?(unit, lines, covered)
-
             span = ((1 << (unit.last_line - unit.entry_line + 1)) - 1) << (unit.entry_line - 1)
+            return nil unless traceable?(lines[(unit.entry_line - 1)...unit.last_line].to_a, covered.anybits?(span))
+
             table.each { |index, bitmap| picked << index if bitmap.anybits?(span) }
           end
           picked
         end
 
-        # Every entry into a unit runs its entry line first, so a test that ran the
-        # unit is on record for that line, provided coverage reports the line at
-        # all and no hit on it came while no test was being recorded.
-        def traceable?(unit, lines, covered)
-          index = unit.entry_line - 1
-          hits = lines[index]
-          hits.is_a?(Integer) && (hits.zero? || covered[index].positive?)
+        # Every entry into a unit runs a line inside its span, though not always
+        # its entry line: `begin ... end if ready` reports the predicate's line,
+        # and a body that opens with a multi-line array literal reports its first
+        # element. So a test that ran the unit is on record for some line of it,
+        # provided coverage reports any of its lines, and a unit that ran with no
+        # test on record for it ran while no test was being recorded.
+        def traceable?(hits, recorded)
+          hits.any?(Integer) && (recorded || hits.none? { |count| count.is_a?(Integer) && count.positive? })
         end
       end
     end

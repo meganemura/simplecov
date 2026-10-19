@@ -72,6 +72,12 @@ RSpec.describe SimpleCov::CLI do
           rescue
             nil
           end
+
+          def self.ready(flag)
+            begin
+              flag.to_s
+            end if flag
+          end
         end
       RUBY
     end
@@ -86,23 +92,30 @@ RSpec.describe SimpleCov::CLI do
        "contexts" => {"0" => line_bits(5), "1" => line_bits(9, 10), "2" => line_bits(9)}}
     end
     let(:tmp) do
-      specs = %w[add doubled empty area labels safe].to_h { |name| ["spec/#{name}_spec.rb", ""] }
+      specs = %w[add doubled empty area labels safe ready].to_h { |name| ["spec/#{name}_spec.rb", ""] }
       GitFixture.checkout("lib/calc.rb" => recorded, "lib/shapes.rb" => shapes, ".gitignore" => "coverage.json\n", **specs)
     end
 
     # area_spec called the lambda, labels_spec entered the first `each` but not
-    # the second, and safe_spec went through the rescue.
+    # the second, safe_spec went through the rescue, and ready_spec ran `ready`,
+    # whose `begin` line coverage does not report.
+    let(:shapes_hits) do
+      {3 => 1, 4 => 1, 5 => 1, 7 => 1, 12 => 1, 13 => 1, 15 => 1, 16 => 0, 18 => 1, 19 => 1, 24 => 1, 26 => 1,
+       39 => 1, 41 => 1, 42 => 1}
+    end
+    let(:ready_bits) { line_bits(41, 42) }
+
     def shapes_entry
       hits = Array.new(shapes.lines.size)
-      {3 => 1, 4 => 1, 5 => 1, 7 => 1, 12 => 1, 13 => 1, 15 => 1, 16 => 0, 18 => 1, 19 => 1, 24 => 1, 26 => 1}
-        .each { |line, count| hits[line - 1] = count }
+      shapes_hits.each { |line, count| hits[line - 1] = count }
       {"source" => shapes.lines.map(&:chomp), "lines" => hits,
-       "contexts" => {"3" => line_bits(4, 5, 7), "4" => line_bits(12, 13, 15, 18, 19), "5" => line_bits(24, 26)}}
+       "contexts" => {"3" => line_bits(4, 5, 7), "4" => line_bits(12, 13, 15, 18, 19), "5" => line_bits(24, 26),
+                      "6" => ready_bits}}
     end
 
     def payload
       contexts = %w[spec/add_spec.rb:3 spec/doubled_spec.rb:3 spec/empty_spec.rb:3
-        spec/area_spec.rb:1 spec/labels_spec.rb:1 spec/safe_spec.rb:1]
+        spec/area_spec.rb:1 spec/labels_spec.rb:1 spec/safe_spec.rb:1 spec/ready_spec.rb:1]
       {"contexts" => contexts, "coverage" => {"lib/calc.rb" => entry, "lib/shapes.rb" => shapes_entry}}
     end
 
@@ -159,6 +172,28 @@ RSpec.describe SimpleCov::CLI do
         affected
 
         expect(stdout.string).to eq("spec/safe_spec.rb\n")
+      end
+    end
+
+    context "with an edit to a unit whose first line coverage does not report" do
+      before { edit!("flag.to_s", "flag.inspect", file: "lib/shapes.rb") }
+
+      it "selects the tests that ran a later line of it" do
+        affected
+
+        expect(stdout.string).to eq("spec/ready_spec.rb\n")
+      end
+    end
+
+    context "with an edit to a unit that ran, past its first line, while no test was recorded" do
+      let(:ready_bits) { "0" }
+
+      before { edit!("flag.to_s", "flag.inspect", file: "lib/shapes.rb") }
+
+      it "selects every test touching the file" do
+        affected
+
+        expect(stdout.string).to eq("spec/area_spec.rb\nspec/labels_spec.rb\nspec/ready_spec.rb\nspec/safe_spec.rb\n")
       end
     end
 
