@@ -1,0 +1,19 @@
+module SimpleCov
+  module Affected
+    module Rails
+      GLOBAL: Array[String]
+
+      interface _GlobalsHost
+        def globals: () -> Array[String]
+      end
+
+      module Globals : _GlobalsHost
+        def globals: () -> Array[String]
+      end
+
+      def self.register: () -> void
+
+      def self.locale_files: (String root) -> Array[String]
+    end
+  end
+end

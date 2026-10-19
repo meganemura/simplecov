@@ -226,3 +226,30 @@ end
 
 Each call adds to the list, which `SimpleCov.affected_globals` holds. Every file the globs match is recorded with a
 digest when a run records, so the files need not have been read by any test.
+
+## Rails: `require "simplecov/affected/rails"`
+
+```ruby
+# test/test_helper.rb or spec/rails_helper.rb, before the application loads
+require "simplecov"
+require "simplecov/affected/rails"
+SimpleCov.start "rails" do
+  track_tests
+end
+```
+
+It loads `simplecov/affected` and adds what a Rails application keeps across tests, which per-test recording cannot
+see. Nothing in it loads Rails; each rule looks at what is already defined when it is needed.
+
+- **Global files.** `config/**/*`, the schema (`db/schema.rb`, `db/structure.sql`, and their per-database
+  variants), migrations, seeds, and `test/fixtures/**/*` and `spec/fixtures/**/*` are added to `affected_global`,
+  and so is every locale file of the project that `I18n.load_path` names at the end of the run (an engine's, a
+  `lib/locales`). A process reads all of them once. To leave one out, remove it from `SimpleCov.affected_globals`
+  inside `SimpleCov.start`.
+- **Autoloading.** Zeitwerk loads a class inside whichever test uses it first. Like every project file loaded after
+  boot, its class body is charged to `(boot)` (see [What is recorded](#what-is-recorded)), so the test is not
+  credited with the definitions and a change to code that runs as the class loads reruns every test, as it would
+  with `eager_load`.
+- **Forked workers.** `parallelize` forks workers after the test files load. Each worker's setup before its first
+  test is charged to `(boot)`, and its part is folded into the recording with the others.
+

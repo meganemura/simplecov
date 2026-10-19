@@ -22,6 +22,8 @@ module SimpleCov
 
     def capture: (Result result) -> void
 
+    def globals: () -> Array[String]
+
     def finish: () -> void
   end
 end
