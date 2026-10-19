@@ -1,0 +1,51 @@
+module SimpleCov
+  module Affected
+    class Statics
+      HOOKS: Set[String]
+      REQUIRES: Array[String]
+      WRITES: Set[Symbol]
+      UNITS: Array[Symbol]
+
+      def self.path_key: (String path) -> String
+
+      def self.unit?: (untyped node) -> bool
+
+      def self.parse: (String source, String path) -> Statics?
+
+      @source: String
+      @path: String
+      @sums: Hash[String, Set[String]]
+      @anonymous: Hash[String, Array[String]]
+
+      attr_reader names: Hash[String, Array[String]]
+      attr_reader mentions: Hash[String, Set[String]]
+      attr_reader requires: Array[[String, String]]
+
+      def initialize: (Prism::ParseResult result, String source, String path) -> void
+
+      private
+
+      def body: (untyped node) -> Array[untyped]
+
+      def add: (String key, String sum, ?untyped node) -> void
+
+      def anonymous: (Array[String] scope, untyped node, ?String text) -> void
+
+      def walk: (Array[untyped] statements, Array[String] scope) -> void
+
+      def statement: (untyped node, Array[String] scope) -> void
+
+      def branches: (Prism::IfNode | Prism::UnlessNode node, Array[String] scope) -> void
+
+      def namespace: (Prism::ClassNode | Prism::ModuleNode node, Array[String] scope) -> void
+
+      def write: (untyped node, Array[String] scope) -> void
+
+      def define: (Prism::DefNode node, Array[String] scope) -> void
+
+      def call: (Prism::CallNode node, Array[String] scope) -> void
+
+      def elide: (untyped node, ?Array[[Integer, Integer, String]] cuts) -> String
+    end
+  end
+end

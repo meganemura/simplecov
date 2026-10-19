@@ -1,0 +1,48 @@
+module SimpleCov
+  module Affected
+    class Names
+      PREFIXES: Array[String]
+      FLIPS: Integer
+
+      @recording: Recording
+      @run: untyped
+      @tree: Tree
+      @snapshot: Hash[String, String]
+      @paths: Set[String]
+      @changed: Array[String]
+
+      attr_reader keys: Hash[String, String?]
+      attr_reader unparsable: String?
+
+      def initialize: (Recording recording, untyped run, Tree tree) -> void
+
+      def resolve: (String path, String kind, String feature) -> String
+
+      private
+
+      def index: () -> Recording::Index
+
+      def add: (String key, String? local) -> void
+
+      def before: (String path) -> Version?
+
+      def requires_of: (Version? version) -> Array[[String, String]]
+
+      def compute: () -> void
+
+      def loaded_sets: () -> [Hash[String, bool], Hash[String, bool]]
+
+      def tally: (Hash[String, bool] loaded_before, Hash[String, bool] loaded_after) -> Hash[String, Integer]
+
+      def compare: (String path, Version? old, Version? now) -> void
+
+      def one_liners: (Version? old, Version? now, String? local) -> void
+
+      def features: (Version version) -> Hash[String, Integer]
+
+      def close: (Hash[String, Statics] after_statics, Hash[String, bool] loaded_before) -> void
+
+      def users: (String token, String? local, Hash[String, Statics] after_statics, Hash[String, bool] loaded_before) -> Array[[String, String]]
+    end
+  end
+end

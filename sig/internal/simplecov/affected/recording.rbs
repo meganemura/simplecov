@@ -1,0 +1,46 @@
+module SimpleCov
+  module Affected
+    class Recording
+      class Index < ::Struct[untyped]
+        attr_accessor known: Hash[String, Set[String]]
+        attr_accessor uses: Hash[String, Array[[String, String]]]
+        attr_accessor requires: Hash[String, Integer]
+
+        def self.new: (Hash[String, Set[String]] known, Hash[String, Array[[String, String]]] uses, Hash[String, Integer] requires) -> Index
+      end
+
+      @versions: Hash[[String, String], Version?]
+      @indexes: Hash[String, Index]
+      @test_files: Set[String]
+      @tests_of: Hash[String, Array[Hash[String, untyped]]]
+      @test_dirs: Set[String]
+      @known: Set[String]
+
+      attr_reader document: Hash[String, untyped]
+
+      def initialize: (Hash[String, untyped] document) -> void
+
+      def tests: () -> Hash[String, Hash[String, untyped]]
+
+      def loads: () -> Hash[String, Hash[String, untyped]]
+
+      def reads: () -> Hash[String, String?]
+
+      def version: (String path, String digest) -> Version?
+
+      def hits: (String path, String digest) -> Array[Integer?]
+
+      def snapshot: (untyped run) -> Hash[String, String]
+
+      def test_files: () -> Set[String]
+
+      def tests_of: (String file) -> Array[Hash[String, untyped]]
+
+      def test_dir?: (String path) -> bool
+
+      def known: () -> Set[String]
+
+      def index: (untyped run) { (String path, String kind, String feature) -> String } -> Index
+    end
+  end
+end

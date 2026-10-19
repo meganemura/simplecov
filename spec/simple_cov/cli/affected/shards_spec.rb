@@ -16,7 +16,7 @@ RSpec.describe SimpleCov::CLI::Affected::Shards do
     tests = ids.to_h { |id| [id, {"file" => "a_spec.rb", "reads" => [], "lines" => {}}] }
     path = File.join(dir, "#{name}.json")
     File.write(path, JSON.generate("version" => 1, "root" => dir, "env" => env, "files" => {}, "latest" => {},
-      "tests" => tests, "loads" => {}, "boot" => {"lines" => {}, "reads" => []}, "reads" => {}, "unmeasured" => {},
+      "tests" => tests, "loads" => {}, "boot" => {"lines" => {}, "reads" => []}, "reads" => {}, "unmeasured" => {}, "unloaded" => {}, "runs" => {},
       "complete" => ["a_spec.rb"]))
     path
   end

@@ -1,0 +1,88 @@
+module SimpleCov
+  module Affected
+    class Selection
+      class Result < ::Struct[untyped]
+        attr_accessor full: String?
+        attr_accessor reasons: Hash[String, String?]
+
+        def self.new: (String? full, Hash[String, String?] reasons) -> Result
+      end
+
+      class Charged < ::Struct[untyped]
+        attr_accessor id: String
+        attr_accessor kind: String
+        attr_accessor first_line: Integer
+        attr_accessor entry_line: Integer
+        attr_accessor last_line: Integer
+        attr_accessor one_liner: bool
+
+        def self.new: (String id, String kind, Integer first_line, Integer entry_line, Integer last_line, bool one_liner) -> Charged
+      end
+
+      class Status < ::Struct[untyped]
+        attr_accessor deleted: bool
+        attr_accessor whole: bool
+        attr_accessor charged: Array[Charged]
+
+        def self.new: (bool deleted, bool whole, Array[Charged] charged) -> Status
+      end
+
+      NOTHING: Array[Charged]
+      DELETED: Status
+      WHOLE: Status
+      TEMPLATE: Regexp
+
+      @recording: Recording
+      @tree: Tree
+      @statuses: Hash[[String, String], Status?]
+      @names: Hash[String, Names]
+      @masks: Hash[[String, String, Array[String]], Hash[String, [Integer, Integer]]]
+
+      def self.call: (Hash[String, untyped] document, Tree tree) -> Result
+
+      def initialize: (Hash[String, untyped] document, Tree tree) -> void
+
+      def call: () -> Result
+
+      private
+
+      def global: () -> String?
+
+      def boot_reason: (Hash[String, [String, String]] lines) -> String?
+
+      def unparsable: () -> String?
+
+      def reason: (Hash[String, untyped] test) -> String?
+
+      def deleted: (Array[Hash[String, untyped]] records) -> String?
+
+      def ran: (Hash[String, untyped] test) -> String?
+
+      def loaded: (Hash[String, untyped] test, Hash[String, untyped]? load) -> String?
+
+      def written_in?: (Hash[String, untyped] test, String path, Charged piece) -> bool
+
+      def changed_read: (Array[String] paths) -> String?
+
+      def name: (Hash[String, untyped] test, Array[Hash[String, untyped]] records) -> String?
+
+      def names: (untyped run) -> Names
+
+      def reached: (Hash[String, untyped] test, Array[Hash[String, untyped]] records, Hash[String, String?] keys) -> Set[String]
+
+      def masks: (String path, String digest, Hash[String, String?] keys) -> Hash[String, [Integer, Integer]]
+
+      def fill_masks: (Version version, Hash[String, [Integer, Integer]] masks) -> void
+
+      def span: (Charged piece) -> Integer
+
+      def status: (String path, String digest) -> Status?
+
+      def compare: (String path, String digest) -> Status?
+
+      def charged_units: (Version before, CLI::Affected::Units::Outline outlined, CLI::Affected::Units::Outline now) -> Array[Charged]
+
+      def charged_one_liners: (Version before, Version after) -> Array[Charged]
+    end
+  end
+end

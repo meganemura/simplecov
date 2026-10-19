@@ -1,0 +1,64 @@
+module SimpleCov
+  module Affected
+    class Version
+      class Piece < ::Struct[untyped]
+        attr_accessor id: String
+        attr_accessor name: String
+        attr_accessor first_line: Integer
+        attr_accessor last_line: Integer
+        attr_accessor text: String
+        attr_accessor tokens: Set[String]
+
+        def self.new: (String id, String name, Integer first_line, Integer last_line, String text, Set[String] tokens) -> Piece
+      end
+
+      @outline: CLI::Affected::Units::Outline?
+      @statics: Statics?
+      @pieces: [Hash[String, Set[String]], Hash[String, Piece]]
+      @own_lines: Hash[String, Integer]
+
+      attr_reader path: String
+      attr_reader source: String
+
+      def initialize: (String path, String source) -> void
+
+      def line_of: (Integer offset) -> Integer
+
+      def outline: () -> CLI::Affected::Units::Outline?
+
+      def statics: () -> Statics?
+
+      def reach: () -> Hash[String, Set[String]]
+
+      def own_lines: () -> Hash[String, Integer]
+
+      def self.mask: (Integer first, Integer last) -> Integer
+
+      def one_liners: () -> Hash[String, Piece]
+
+      private
+
+      def pieces: () -> [Hash[String, Set[String]], Hash[String, Piece]]
+
+      class Walker < CLI::Affected::Units::Collector
+        UNIT: ^(untyped) -> bool
+
+        @lines: Array[String]
+        @seen_one_liners: Hash[String, Integer]
+
+        attr_reader reach: Hash[String, Set[String]]
+        attr_reader one_liners: Hash[String, Piece]
+
+        def initialize: (String source) -> void
+
+        def visit_def_node: (Prism::DefNode node) -> void
+
+        private
+
+        def one_liner: (Prism::DefNode node) -> void
+
+        def scopes: () -> Array[String]
+      end
+    end
+  end
+end

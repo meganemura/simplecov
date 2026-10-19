@@ -1,0 +1,25 @@
+module SimpleCov
+  module Affected
+    module Tokens
+      extend Tokens
+
+      WORD: Regexp
+      WORD_START: Regexp
+      LOCAL: Regexp
+      NAMES: Array[Symbol]
+      NESTED: Array[Symbol]
+
+      def digest: (String text) -> String
+
+      def setter: (String name) -> String
+
+      def words: (String text) -> Set[String]
+
+      def of: (untyped node, ?stop: ^(untyped) -> bool) -> Set[String]
+
+      private
+
+      def mention: (untyped node, Set[String] found) -> void
+    end
+  end
+end
