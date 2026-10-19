@@ -6,8 +6,9 @@ require "support/sandbox_project"
 RSpec.describe "simplecov/affected/rails", :sandbox do
   def sidecar = JSON.parse(read_file("coverage/.affected.json"))
 
-  def run_tests(mode = "all", workers: 2)
-    run_command_and_expect_success("bin/rails test", env: {"SIMPLECOV_AFFECTED" => mode, "PARALLEL_WORKERS" => workers.to_s}, timeout: 120)
+  def run_tests(mode = "all", workers: 2, env: {})
+    env = {"SIMPLECOV_AFFECTED" => mode, "PARALLEL_WORKERS" => workers.to_s}.merge(env)
+    run_command_and_expect_success("bin/rails test", env: env, timeout: 120)
   end
 
   def edit(path, from, to) = write_file(path, read_file(path).sub(from, to))
@@ -19,6 +20,7 @@ RSpec.describe "simplecov/affected/rails", :sandbox do
       require "simplecov/affected/rails"
       SimpleCov.start "rails" do
         track_tests
+        cover_views if ENV["COVER_VIEWS"]
       end
 
       ENV["RAILS_ENV"] ||= "test"
@@ -128,6 +130,23 @@ RSpec.describe "simplecov/affected/rails", :sandbox do
       result = run_command("bin/rails test test/models/invoice_test.rb", env: {"SIMPLECOV_AFFECTED" => "all"}, timeout: 120)
 
       expect(result.output).to include("1 runs, 1 assertions, 0 failures, 0 errors")
+    end
+  end
+
+  context "with cover_views" do
+    before do
+      write_file("app/views/orders/unused.html.erb", "<p>never rendered</p>\n")
+      run_tests(workers: 1, env: {"COVER_VIEWS" => "1"})
+    end
+
+    it "charges no context with the templates SimpleCov compiles for the report" do
+      reads = [sidecar.dig("boot", "reads"), *sidecar.fetch("tests").values.map { |test| test.fetch("reads") }].flatten
+
+      expect(reads).not_to include("app/views/orders/unused.html.erb")
+    end
+
+    it "gives the tests that rendered a template a read of it" do
+      expect(sidecar.dig("tests", "test/views/orders_test.rb::OrdersTest#test_shows_the_total", "reads")).to include("app/views/orders/_line.html.erb")
     end
   end
 
