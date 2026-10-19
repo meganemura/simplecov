@@ -5,7 +5,7 @@ module SimpleCov
 
       SPEC_NUMBER: Regexp
 
-      def install: (untyped test_case) -> void
+      def install: (untyped test_case, ?narrow: bool) -> void
 
       def id: (untyped klass, String name) -> String
 
@@ -39,6 +39,14 @@ module SimpleCov
         def run: (*untyped args, **untyped kwargs) -> untyped
 
         def filter_runnable_methods: (?untyped options) -> untyped
+      end
+
+      interface _Methods
+        def runnable_methods: () -> Array[String]
+      end
+
+      module Narrow : _Methods
+        def runnable_methods: () -> Array[String]
       end
 
       module Run : _Test

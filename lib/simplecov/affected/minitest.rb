@@ -13,9 +13,10 @@ module SimpleCov
 
       extend self
 
-      def install(test_case)
+      def install(test_case, narrow: false)
         test_case.prepend(Run)
         test_case.singleton_class.prepend(Filters)
+        test_case.singleton_class.prepend(Narrow) if narrow
       end
 
       def id(klass, name)
@@ -52,6 +53,18 @@ module SimpleCov
         def filter_runnable_methods(options = {})
           Filters.note(options)
           super
+        end
+      end
+
+      # Minitest 5 and 6 both ask each runnable class for its test methods
+      # before filtering and running them, after shuffling them under the
+      # run's seed, so leaving names out here keeps the order of the rest.
+      module Narrow
+        def runnable_methods
+          super.select do |name|
+            file = Minitest.file(self, name)
+            file.nil? || Affected.run?(Minitest.id(self, name))
+          end
         end
       end
 

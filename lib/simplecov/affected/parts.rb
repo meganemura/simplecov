@@ -32,15 +32,18 @@ module SimpleCov
       # Folds this run's parts into the sidecar under a lock, because two
       # suites that finish at the same moment would otherwise each read the
       # sidecar before the other wrote it, and one run's records would be lost.
+      # Answers the run's own recording, or nil when no process wrote one.
       def finish(coverage_path, run_id, root, timeout:)
         dir = run_dir(coverage_path, run_id)
         parts = Dir.glob(File.join(dir, "*.json")).sort.filter_map { |path| Sidecar.read(path) }
+        run = Merge.combine(parts) unless parts.empty?
         locked(coverage_path) do
           sidecar = Sidecar.path(coverage_path)
-          Sidecar.write(sidecar, Merge.onto(Sidecar.read(sidecar), Merge.combine(parts), root)) unless parts.empty?
+          Sidecar.write(sidecar, Merge.onto(Sidecar.read(sidecar), run, root)) if run
         end
         FileUtils.rm_rf(dir)
         clear_abandoned(coverage_path, timeout)
+        run
       end
 
       def run_dir(coverage_path, run_id)

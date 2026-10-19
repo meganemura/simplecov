@@ -14,7 +14,11 @@ module SimpleCov
     module RSpec
       extend self
 
-      def install(rspec)
+      # With `narrow`, an exclusion filter on the id leaves out the examples
+      # the plan does not run. RSpec applies it the way it applies `--tag
+      # ~slow`, so the examples it leaves out never run a hook of their own,
+      # and a group whose every example is left out runs no `before(:context)`.
+      def install(rspec, narrow: false)
         return if @installed || rspec.nil?
 
         @installed = true
@@ -25,7 +29,13 @@ module SimpleCov
           config.prepend_before(:context) { Affected::RSpec.mark(self.class) }
           config.around { |example| Affected::RSpec.run(example) }
           config.before(:suite) { Affected::RSpec.note_filters(config) }
+          config.filter_run_excluding(affected_id: ->(id) { Affected::RSpec.skip?(id) }) if narrow
         end
+      end
+
+      # An example outside the project has no id and always runs.
+      def skip?(id)
+        !id.nil? && !Affected.run?(id)
       end
 
       # The exclusions RSpec sets itself (`if:`, `unless:`) and the one the

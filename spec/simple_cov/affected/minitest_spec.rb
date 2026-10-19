@@ -105,6 +105,37 @@ RSpec.describe SimpleCov::Affected::Minitest do
     end
   end
 
+  describe "narrowing" do
+    let(:runnable) do
+      Class.new do
+        def self.runnable_methods = %w[test_kept test_left test_elsewhere]
+
+        def test_kept
+        end
+
+        def test_left
+        end
+
+        define_method(:test_elsewhere) {}
+      end
+    end
+
+    before do
+      stub_const("NarrowTest", runnable)
+      described_class.install(NarrowTest, narrow: true)
+      SimpleCov::Affected.instance_variable_set(:@plan,
+        SimpleCov::Affected::Plan.new(nil, {"spec/simple_cov/affected/minitest_spec.rb::NarrowTest#test_left" => nil}))
+      allow(described_class).to receive(:file).and_call_original
+      allow(described_class).to receive(:file).with(NarrowTest, "test_elsewhere").and_return(nil)
+    end
+
+    after { SimpleCov::Affected.instance_variable_set(:@plan, nil) }
+
+    it "leaves out the tests the plan does not run, and keeps one with no file" do
+      expect(with_recorder(File.dirname(__dir__, 3)) { NarrowTest.runnable_methods }).to eq(%w[test_kept test_elsewhere])
+    end
+  end
+
   it "just runs the test without a recorder" do
     expect(CalcTest.new("test_0007_adds").run).to eq(:result)
   end

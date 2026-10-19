@@ -3,12 +3,20 @@ module SimpleCov
     extend Affected
 
     @recorder: Recorder?
+    @plan: Plan?
+    @mode: Symbol
 
     attr_reader recorder: Recorder?
+
+    attr_reader plan: Plan?
 
     def start: () -> void
 
     def install_minitest: () -> void
+
+    def narrowing?: () -> bool
+
+    def run?: (String id) -> bool
 
     def capture: (Result result) -> void
 

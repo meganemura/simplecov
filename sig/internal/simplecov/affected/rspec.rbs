@@ -5,7 +5,9 @@ module SimpleCov
 
       @installed: bool
 
-      def install: (untyped rspec) -> void
+      def install: (untyped rspec, ?narrow: bool) -> void
+
+      def skip?: (String? id) -> bool
 
       OWN_EXCLUSIONS: Array[Symbol]
 

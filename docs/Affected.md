@@ -155,3 +155,44 @@ report only under `merge_subprocesses`, as for the coverage report itself.
 
 CI shards each write their own `coverage/.affected.json`. Gather them and fold them into one with
 `simplecov affected merge shard-*/coverage/.affected.json`, then keep the result where the next build finds it.
+
+## Running only the affected tests
+
+Under `:select` the run decides its plan once, as tracking starts and before any test file loads: it reads
+`coverage/.affected.json`, compares it with the working tree as described above, and prints one line on stderr.
+
+```
+SimpleCov affected: running 3 of 412 recorded tests, and any new ones
+SimpleCov affected: running every test (no recording)
+```
+
+RSpec then leaves the other examples out through an exclusion filter on the example's id, the way `--tag ~slow`
+leaves examples out: a left-out example runs no hook of its own, and a group none of whose examples run runs no
+`before(:context)`. Minitest leaves the other test methods out of each class's `runnable_methods`, after the seed has
+shuffled them, so the order of the rest stays the order the seed gives. Both still load every test file. A test the
+recording does not know (new, renamed, or dropped as stale) always runs, and so does every test when the plan is a
+full run. A file with tests left out is narrowed, so the recording keeps the records of the tests it skipped.
+
+Runner filters apply on top of the plan: `rspec spec/a_spec.rb` or `-n /parse/` narrows further, and the recording
+treats the run as filtered.
+
+## Auditing the selection
+
+`:audit` (or `SIMPLECOV_AFFECTED=audit` in a CI job) decides the same plan but runs every test. Once the final
+result exists it writes `coverage/.affected-audit.json` and prints a summary on stderr:
+
+```json
+{
+  "full": null,
+  "ran": 412,
+  "selected": 3,
+  "skipped": ["spec/a_spec.rb::A parses", "..."],
+  "skipped_failures": [],
+  "reasons": {"spec/calc_spec.rb::Calc adds": "def lib/calc.rb Calc#add", "...": "..."}
+}
+```
+
+`skipped_failures` lists the tests the selection would have skipped that failed in this run. Any entry there is a
+change the selection missed, so a job that audits before the team relies on `:select` checks exactly that. `full`
+is the reason the selection would have run every test, if any (`env`, `no recording`, ...). A test this run ran that
+the recording did not know is selected as `new`.
