@@ -18,7 +18,24 @@ module SimpleCov
         def test: (String id, file: String?, line: Integer?, ?must_run: bool) { () -> bool } -> bool
       end
 
+      self.@components: bool?
+      self.@sidecars: Hash[Class, Array[String]]?
+
+      interface _Component
+        def render_in: (*untyped, **untyped) ?{ (*untyped) -> untyped } -> untyped
+      end
+
+      module ComponentRender : _Component
+        def render_in: (*untyped, **untyped) ?{ (*untyped) -> untyped } -> untyped
+      end
+
       def self.install: (_Reader recorder) -> void
+
+      def self.rendered: (Class component) -> void
+
+      def self.sidecars: (Class component) -> Array[String]
+
+      def self.beside: (String source) -> Array[String]
 
       interface _GlobalsHost
         def globals: () -> Array[String]

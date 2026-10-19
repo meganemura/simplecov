@@ -9,3 +9,8 @@ module ActiveSupport
     def self.subscribe: (Regexp pattern) { (*untyped) -> void } -> untyped
   end
 end
+
+module ViewComponent
+  class Base
+  end
+end

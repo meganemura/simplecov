@@ -252,6 +252,10 @@ see. Nothing in it loads Rails; each rule looks at what is already defined when 
   tests that rendered it (`read <path>`), and a test also reaches the names its templates mention: a changed constant
   that only a view prints reruns the tests that rendered that view (`name <name>`). With `cover_views`, the
   template's own lines say the same.
+- **ViewComponent.** A component compiles its sidecar template once too, and its render emits no ActionView event.
+  Each render of a component reads the files beside its class's file (`card_component.html.erb`,
+  `card_component.yml`, the files in `card_component/`) and its superclasses', so a changed sidecar template reruns
+  the tests that rendered that component, directly or from a view.
 - **Autoloading.** Zeitwerk loads a class inside whichever test uses it first. Like every project file loaded after
   boot, its class body is charged to `(boot)` (see [What is recorded](#what-is-recorded)), so the test is not
   credited with the definitions and a change to code that runs as the class loads reruns every test, as it would
