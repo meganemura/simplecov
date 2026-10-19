@@ -10,7 +10,7 @@ module SimpleCov
 
         def self?.reached: (Array[Units::Unit] charged, Array[untyped] lines, Hash[Integer, Integer] table) -> Set[Integer]?
 
-        def self?.traceable?: (Units::Unit unit, Array[untyped] lines, Integer covered) -> bool
+        def self?.traceable?: (Array[untyped] hits, bool recorded) -> bool
       end
     end
   end
