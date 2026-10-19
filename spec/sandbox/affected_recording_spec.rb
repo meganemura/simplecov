@@ -76,6 +76,71 @@ RSpec.describe "simplecov/affected recording", :sandbox do
     end
   end
 
+  describe "a later run of part of the suite" do
+    before do
+      write_file("spec/reading_spec.rb", <<~RUBY)
+        require "spec_helper"
+
+        RSpec.describe "reading" do
+          it("passes") { expect(1).to eq(1) }
+          it("fails") { expect(1).to eq(2) }
+        end
+      RUBY
+      configure_simplecov(:rspec, config)
+      run_command(sorted_rspec_command)
+      run_command("bundle exec rspec spec/reading_spec.rb -e passes")
+    end
+
+    it "keeps the records of the tests it did not run" do
+      expect(test_record("spec/reading_spec.rb::reading fails").fetch("ok")).to be(false)
+    end
+
+    it "keeps the other spec files' records" do
+      expect(sidecar.fetch("tests").keys.map { |id| id.split("::").first }.uniq.size).to be > 1
+    end
+
+    it "folds its parts away" do
+      expect(file_exist?("coverage/.affected-parts")).to be(false)
+    end
+  end
+
+  describe "a run whose tests run in forked workers" do
+    before do
+      self.bundle_with = "minitest"
+      install_dependencies
+      write_file("test/forked_test.rb", <<~RUBY)
+        class ForkedTest < Minitest::Test
+          def test_reverse = assert_equal("ba", SomeClass.new("ab").reverse)
+
+          def test_compare = assert(SomeClass.new("ab").compare_with("ab"))
+        end
+      RUBY
+      write_file("fork_run.rb", <<~RUBY)
+        require "simplecov"
+        require "simplecov/affected"
+        SimpleCov.start do
+          track_tests
+          affected :all
+          merge_subprocesses true
+        end
+        require "minitest"
+        require_relative "lib/faked_project"
+        load File.expand_path("test/forked_test.rb")
+        %w[test_reverse test_compare].map { |name| fork { ForkedTest.new(name).run } }.each { |pid| Process.wait(pid) }
+      RUBY
+      run_command_and_expect_success("bundle exec ruby fork_run.rb")
+    end
+
+    it "folds every worker's tests into one recording" do
+      expect(sidecar.fetch("tests").keys).to contain_exactly("test/forked_test.rb::ForkedTest#test_reverse",
+        "test/forked_test.rb::ForkedTest#test_compare")
+    end
+
+    it "records what each worker's test ran" do
+      expect(test_record("test/forked_test.rb::ForkedTest#test_reverse").fetch("lines")).to have_key("lib/faked_project/some_class.rb")
+    end
+  end
+
   describe "a Minitest suite" do
     before do
       self.bundle_with = "minitest"

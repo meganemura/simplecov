@@ -76,3 +76,28 @@ in `coverage.json`'s encoding (bit N is line N+1). The other top-level keys are:
 | `reads` | A digest of every data file anything read. |
 | `unmeasured` | Project files loaded before coverage started, with a digest: their lines are unknown. |
 | `env` | A digest of the Ruby version, the platform, and the lockfile. |
+| `complete` | Only in a process's part (see below): the test files whose every test ran. |
+
+## Partial runs, forked workers, and CI shards
+
+A run that ran some of the tests says nothing about the rest, so the recording is never rewritten from one run
+alone. Each process of a run (the main process, each forked worker, each parallel_tests worker) writes its own part
+to `coverage/.affected-parts/<run id>/<pid>.json` when it collects its coverage, and the process that writes the final
+report folds the run's parts into `coverage/.affected.json` under a lock:
+
+- A test the run ran is recorded afresh. A test it did not run keeps its record, against the versions of the files it
+  was recorded with; that is why `files` can hold several versions of one file, and a version is dropped once no
+  record names it and it is not the latest.
+- A test file whose every test ran drops the ids it no longer defines (a renamed or deleted test). A file narrowed by
+  the selection, or a run filtered by the runner (`rspec -e`, a `:focus` filter, `--tag`, Minitest's `-n`, `-i`, or
+  `-e`), drops nothing.
+- A test that was not rerun and read a data file the run saw at another version is dropped, because no digest of
+  the version it read is kept; dropped, it counts as new and is selected again.
+- Tests whose test file is gone are dropped.
+- A recording made under another Ruby or lockfile is replaced, not merged.
+
+A part directory that a crashed run left behind is removed once it is older than `merge_timeout`. Forked workers
+report only under `merge_subprocesses`, as for the coverage report itself.
+
+CI shards each write their own `coverage/.affected.json`. Gather them and fold them into one with
+`simplecov affected merge shard-*/coverage/.affected.json`, then keep the result where the next build finds it.

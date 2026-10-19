@@ -68,6 +68,10 @@ RSpec.describe SimpleCov::Affected::Capture do
     expect(document.fetch("reads")).to eq("table.yml" => digest_of(File.join(root, "table.yml")))
   end
 
+  it "names the test files whose tests all ran" do
+    expect(document.fetch("complete")).to eq(%w[spec/calc_spec.rb])
+  end
+
   it "records the environment" do
     expect(document.fetch("env")).to eq(SimpleCov::Affected::Sidecar.env(root))
   end

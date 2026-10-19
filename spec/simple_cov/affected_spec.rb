@@ -90,13 +90,17 @@ RSpec.describe SimpleCov::Affected do
     let(:coverage_path) { File.join(root, "coverage") }
     let(:result) { Struct.new(:contexts, :original_result).new(SimpleCov::ContextMap.new, {}) }
 
-    before { allow(SimpleCov).to receive_messages(root: root, coverage_path: coverage_path) }
-
-    after { described_class.instance_variable_set(:@captured, nil) }
+    before { allow(SimpleCov).to receive_messages(root: root, coverage_path: coverage_path, run_id: "run") }
 
     def sidecar = File.join(coverage_path, ".affected.json")
 
-    it "writes the captured recording beside the report" do
+    it "leaves this process's recording as a part of the run" do
+      with_recorder(root, coverage_path) { described_class.capture(result) }
+
+      expect(File.exist?(File.join(coverage_path, ".affected-parts/run/#{Process.pid}.json"))).to be(true)
+    end
+
+    it "folds the run's parts into the sidecar beside the report" do
       with_recorder(root, coverage_path) do
         described_class.capture(result)
         described_class.finish
@@ -112,6 +116,12 @@ RSpec.describe SimpleCov::Affected do
       end
 
       expect(reads).to be_empty
+    end
+
+    it "writes no part for a result without contexts" do
+      with_recorder(root, coverage_path) { described_class.capture(Struct.new(:contexts, :original_result).new(nil, {})) }
+
+      expect(Dir.exist?(File.join(coverage_path, ".affected-parts"))).to be(false)
     end
 
     it "captures nothing without a recorder" do

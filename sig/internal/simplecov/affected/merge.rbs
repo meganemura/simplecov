@@ -1,0 +1,27 @@
+module SimpleCov
+  module Affected
+    module Merge
+      extend Merge
+
+      PER_KEY: Array[String]
+
+      def combine: (Array[Hash[String, untyped]] documents) -> Hash[String, untyped]
+
+      def onto: (Hash[String, untyped]? previous, Hash[String, untyped] run, String root) -> Hash[String, untyped]
+
+      private
+
+      def join: (Hash[String, untyped] into, Hash[String, untyped] document) -> Hash[String, untyped]
+
+      def join_files: (Hash[String, untyped] into, Hash[String, untyped] files) -> Hash[String, untyped]
+
+      def join_records: (Hash[String, untyped] into, Hash[String, untyped] records) -> Hash[String, untyped]
+
+      def join_record: (Hash[String, untyped] record, Hash[String, untyped] again) -> Hash[String, untyped]
+
+      def drop_stale: (Hash[String, untyped] previous, Hash[String, untyped] run, Array[String] complete) -> Hash[String, untyped]
+
+      def prune: (Hash[String, untyped] document, String root) -> Hash[String, untyped]
+    end
+  end
+end

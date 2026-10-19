@@ -9,6 +9,7 @@ require_relative "affected/runner"
 require_relative "affected/changed_units"
 require_relative "affected/selection"
 require_relative "affected/units"
+require_relative "affected/shards"
 
 module SimpleCov
   module CLI
@@ -32,6 +33,8 @@ module SimpleCov
       extend self
 
       def run(args, stdout:, stderr:)
+        return Shards.run(args.drop(1), stdout: stdout, stderr: stderr) if args.first.eql?("merge")
+
         opts = parse(args)
         issue = precheck(opts)
         return error(stderr, issue) if issue

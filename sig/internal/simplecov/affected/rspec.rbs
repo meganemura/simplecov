@@ -7,6 +7,10 @@ module SimpleCov
 
       def install: (untyped rspec) -> void
 
+      OWN_EXCLUSIONS: Array[Symbol]
+
+      def note_filters: (untyped config) -> void
+
       def derive: (Hash[Symbol, untyped] metadata, Hash[untyped, Integer] undescribed) -> void
 
       def line_in_file: (Hash[Symbol, untyped] metadata) -> Integer

@@ -156,6 +156,30 @@ RSpec.describe SimpleCov::Affected::Recorder do
     end
   end
 
+  describe "#complete" do
+    before do
+      recorder.boundary("spec/a_spec.rb")
+      recorder.test("spec/b_spec.rb::b", file: "spec/b_spec.rb", line: 1) { true }
+      recorder.test("::Orphan#test_x", file: nil, line: nil) { true }
+    end
+
+    it "names the test files whose tests all ran" do
+      expect(recorder.complete).to eq(%w[spec/a_spec.rb spec/b_spec.rb])
+    end
+
+    it "leaves out a file some of whose tests were left out" do
+      recorder.narrowed("spec/a_spec.rb")
+
+      expect(recorder.complete).to eq(%w[spec/b_spec.rb])
+    end
+
+    it "names no file once the runner filtered the tests" do
+      recorder.filtered!
+
+      expect(recorder.complete).to be_empty
+    end
+  end
+
   it "opens the boot context as it starts" do
     recorder.start
 

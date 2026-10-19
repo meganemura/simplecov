@@ -69,6 +69,42 @@ RSpec.describe SimpleCov::Affected::Minitest do
     expect(with_recorder("/proj") { CalcTest.new("test_0007_adds").run }).to eq(:result)
   end
 
+  describe "the runner's filters" do
+    # Minitest 5 hands the options to `run`, Minitest 6 to
+    # `filter_runnable_methods`; the stand-in answers both.
+    let(:runnable) do
+      Class.new do
+        def self.run(*args, **) = args
+
+        def self.filter_runnable_methods(_options = {}) = [:test_a]
+      end.tap { |klass| klass.singleton_class.prepend(SimpleCov::Affected::Minitest::Filters) }
+    end
+
+    def complete_after
+      with_recorder("/proj") do |recorder|
+        recorder.boundary("test/a_test.rb")
+        yield
+        recorder.complete
+      end
+    end
+
+    it "notes a name filter handed to run" do
+      expect(complete_after { runnable.run(:reporter, {filter: "/x/"}) }).to be_empty
+    end
+
+    it "notes an exclusion handed to filter_runnable_methods" do
+      expect(complete_after { runnable.filter_runnable_methods(exclude: "x") }).to be_empty
+    end
+
+    it "keeps every file complete without filters" do
+      expect(complete_after { runnable.run(:klass, :name, :reporter) && runnable.run(seed: 1) }).to eq(%w[test/a_test.rb])
+    end
+
+    it "answers what Minitest answers" do
+      expect([runnable.run(:reporter, {}), runnable.filter_runnable_methods]).to eq([[:reporter, {}], [:test_a]])
+    end
+  end
+
   it "just runs the test without a recorder" do
     expect(CalcTest.new("test_0007_adds").run).to eq(:result)
   end

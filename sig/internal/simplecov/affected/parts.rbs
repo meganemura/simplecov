@@ -1,0 +1,20 @@
+module SimpleCov
+  module Affected
+    module Parts
+      extend Parts
+
+      DIR: String
+      LOCK: String
+
+      def write: (String coverage_path, untyped run_id, Integer pid, Hash[String, untyped] document) -> void
+
+      def finish: (String coverage_path, untyped run_id, String root, timeout: Numeric) -> void
+
+      def run_dir: (String coverage_path, untyped run_id) -> String
+
+      def locked: [T] (String coverage_path) { () -> T } -> T
+
+      def clear_abandoned: (String coverage_path, Numeric timeout) -> void
+    end
+  end
+end

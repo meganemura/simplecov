@@ -302,6 +302,11 @@ lookalike entry elsewhere in the report can never stand in for a changed file th
 This is built for the local inner loop. A wrong answer in CI is a green build on a broken change, so adopt it there
 with your eyes open. The merge-base diff needs git 2.30 or later.
 
+`simplecov affected merge <files...> [--output PATH]` folds the `coverage/.affected.json` that each shard of a CI
+build wrote under [`require "simplecov/affected"`](Affected.md) into one recording, written to
+`coverage/.affected.json` unless `--output` names another path. Shards split one suite, so their tests are joined
+rather than laid over each other. Shards recorded under different Rubies or lockfiles are refused.
+
 ### `merge` — combine resultsets from parallel CI workers
 
 CI matrices that produce one `.resultset.json` per worker can stitch them together with `simplecov merge` instead of

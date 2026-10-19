@@ -34,6 +34,8 @@ module SimpleCov
         @loads = {} #: Hash[String, Set[String]]
         @boot_reads = Set.new #: Set[String]
         @sink = @boot_reads #: Set[String]?
+        @narrowed = Set.new #: Set[String]
+        @filtered = false
       end
 
       def start
@@ -83,6 +85,23 @@ module SimpleCov
         sink = @sink or return
         relative = project_file(path)
         sink << relative if relative && !relative.end_with?(".rb")
+      end
+
+      # A test file some of whose tests were left out on purpose, by the
+      # selection or by the runner's own filter, still defines the ids it did
+      # not run; only a file whose every test ran may drop recorded ids.
+      def narrowed(file)
+        @narrowed << file
+      end
+
+      def filtered!
+        @filtered = true
+      end
+
+      def complete
+        return [] if @filtered
+
+        ((@loads.keys | @tests.each_value.filter_map(&:file)) - @narrowed.to_a).sort
       end
 
       # Reads after this point are SimpleCov's own (sources, templates, the
