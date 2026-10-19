@@ -7,7 +7,9 @@ module SimpleCov
       # also cover, the tests contributing no coverage of their own. A context is
       # non-redundant exactly when some line is covered by it alone, so per file
       # two bitmaps (lines seen once, lines seen more than once) find the uniquely
-      # covered lines and a second pass credits each to its owner.
+      # covered lines and a second pass credits each to its owner. Boot's lines
+      # stay covered whichever tests run, so boot counts as another context
+      # covering them, though it is never itself a test to list.
       module Redundancy
         extend self
 
@@ -16,7 +18,7 @@ module SimpleCov
           return unless tables
 
           unique = unique_owners(tables, contexts.size)
-          contexts.each_index.reject { |index| unique.fetch(index) }.map { |index| contexts.fetch(index) }.sort
+          CoverageFile.tests_in(contexts.each_index.reject { |index| unique.fetch(index) }.map { |index| contexts.fetch(index) }).sort
         end
 
         def unique_owners(tables, context_count)

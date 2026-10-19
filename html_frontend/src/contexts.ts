@@ -1,6 +1,22 @@
 
+import type { CoverageData } from './types';
+
 export interface FileContextIndex {
   perLine: number[][];
+}
+
+// `track_tests` records code that ran outside every test, as files loaded,
+// under this context, so `simplecov affected` can tell load-time code apart.
+// It is no test: its lines count as covered outside tests, and no line lists
+// it, the same as `simplecov tests` answers.
+export const BOOT_CONTEXT = '(boot)';
+
+export function dropBootContext(data: CoverageData): void {
+  const index = data.contexts ? data.contexts.indexOf(BOOT_CONTEXT) : -1;
+  if (index < 0) return;
+  for (const file of Object.values(data.coverage)) {
+    if (file.contexts) delete file.contexts[String(index)];
+  }
 }
 
 // Decoding for the per-test context data recorded under `track_tests`: the

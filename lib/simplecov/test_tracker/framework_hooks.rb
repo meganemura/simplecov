@@ -21,12 +21,33 @@ module SimpleCov
 
         @rspec_hook_installed = true
         rspec.configure do |config|
-          # The block runs instance-eval'd in the example group, so everything it
-          # touches must be fully qualified.
+          # The blocks run instance-eval'd in the example group, so everything they
+          # touch must be fully qualified.
+          config.prepend_before(:context) { TestTracker.mark_rspec_group(self.class) }
           config.around do |example|
             SimpleCov.track_test(TestTracker.rspec_example_id(example)) { example.run }
           end
         end
+      end
+
+      # Each example group's `before(:context)` and `after(:context)` hooks run
+      # between examples, where the segment still open is the last example's,
+      # often one in another file. They serve every example of their group, so
+      # each gets a boundary charging its code to the spec file. RSpec's
+      # configuration reaches only the top-level group's hooks, so the nested
+      # groups get theirs from there.
+      def mark_rspec_group(group)
+        file = group.metadata.fetch(:rerun_file_path).delete_prefix("./")
+        SimpleCov.track_test(file) {}
+        group.prepend_after(:context) { SimpleCov.track_test(file) {} }
+        nested_groups(group).each do |child|
+          child.prepend_before(:context) { SimpleCov.track_test(file) {} }
+          child.prepend_after(:context) { SimpleCov.track_test(file) {} }
+        end
+      end
+
+      def nested_groups(group)
+        group.subclasses.flat_map { |child| [child, *nested_groups(child)] }
       end
 
       # The RSpec this process has, if it has one. A Minitest-only suite has

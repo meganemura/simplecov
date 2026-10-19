@@ -9,7 +9,7 @@ import { pctClass, fileId, toHtmlId } from './format';
 import { activeCoverageType, primaryCoverageStat } from './coverage';
 import { renderFileList } from './render_list';
 import { renderSourceFile } from './render_source';
-import { decodeFileContexts, contextIdsForLine } from './contexts';
+import { decodeFileContexts, contextIdsForLine, dropBootContext } from './contexts';
 import type { CoverageData, FileCoverage, ProductionData } from './types';
 
 hljs.registerLanguage('ruby', ruby);
@@ -63,6 +63,7 @@ function runNamesHtml(meta: CoverageData['meta']): string {
 }
 
 export function renderPage(data: CoverageData): void {
+  dropBootContext(data);
   const meta = data.meta;
   const lineCoverage = meta.line_coverage;
   const branchCoverage = meta.branch_coverage;

@@ -4,13 +4,13 @@ module SimpleCov
       module ChangedUnits
         LOAD_TIME: :load_time
 
-        def self?.contexts: (Hash[String, untyped] entry, Hash[Integer, Integer] table, String? current) -> (Set[Integer] | :load_time)?
+        def self?.contexts: (Hash[String, untyped] entry, Hash[Integer, Integer] table, String? current, ?boot: Integer) -> (Set[Integer] | :load_time)?
 
         def self?.recorded_source: (untyped source) -> String?
 
         def self?.charged_units: (Units::Outline before, Units::Outline after) -> Array[Units::Unit]?
 
-        def self?.reached: (Array[Units::Unit] charged, Array[untyped] lines, Hash[Integer, Integer] table) -> (Set[Integer] | :load_time)?
+        def self?.reached: (Array[Units::Unit] charged, Array[untyped] lines, Hash[Integer, Integer] table, Integer boot) -> (Set[Integer] | :load_time)?
 
         def self?.ran?: (untyped hits) -> bool
       end

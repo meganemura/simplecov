@@ -68,6 +68,10 @@ RSpec.describe SimpleCov::TestTracker::Accessors do
       it "installs the framework hooks" do
         expect(SimpleCov::TestTracker).to have_received(:install_framework_hooks)
       end
+
+      it "charges what runs until the first test to boot" do
+        expect(SimpleCov.test_tracker.recorded_map.contexts).to eq([SimpleCov::TestTracker::BOOT])
+      end
     end
 
     it "refuses to start tracking a run that cannot produce deltas" do

@@ -21,13 +21,14 @@ module SimpleCov
       # @api private. Reuses the tracker across repeated `start` calls for the same
       # reason `Coverage` keeps counting across them: restarting must not lose what
       # the process already recorded. The framework hooks are only wired up on the
-      # first.
+      # first. Everything from here to the first test is boot's.
       def start_test_tracking
         validate_test_tracking!
         return unless track_tests? && test_tracker.nil?
 
         @test_tracker = TestTracker.new(granularity: track_tests_granularity)
         TestTracker.install_framework_hooks
+        track_test(TestTracker::BOOT) {}
       end
     end
   end

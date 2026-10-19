@@ -56,7 +56,7 @@ module SimpleCov
         contexts = recorded_contexts(document, opts, stderr)
         return unless contexts
 
-        opts[:no_recording] = contexts.empty?
+        opts[:no_recording] = CoverageFile.tests_in(contexts).empty?
         ids = selected_ids(document, contexts, opts, stderr)
         return ids unless ids && opts[:redundant]
 
@@ -65,7 +65,7 @@ module SimpleCov
       end
 
       def selected_ids(document, contexts, opts, stderr)
-        return contexts.sort unless opts.fetch(:path)
+        return CoverageFile.tests_in(contexts).sort unless opts.fetch(:path)
 
         entry = locate_entry(document, opts, stderr)
         return unless entry
@@ -117,7 +117,7 @@ module SimpleCov
 
       def ids_from(table, contexts, line)
         bit = line && (1 << (line - 1))
-        table.filter_map { |index, bitmap| contexts.fetch(index) if bit.nil? || bitmap.anybits?(bit) }.sort
+        CoverageFile.tests_in(table.filter_map { |index, bitmap| contexts.fetch(index) if bit.nil? || bitmap.anybits?(bit) }).sort
       end
 
       def emit(ids, opts, stdout, stderr)

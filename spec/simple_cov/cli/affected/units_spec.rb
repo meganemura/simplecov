@@ -113,10 +113,15 @@ RSpec.describe SimpleCov::CLI do
                       "6" => ready_bits}}
     end
 
+    # Boot, as track_tests records it: the lines outside the methods, and
+    # `table`, which ran as the file loaded.
+    def boot_bits = line_bits(3, 4, 8, 13, 14, 15, 18)
+
     def payload
       contexts = %w[spec/add_spec.rb:3 spec/doubled_spec.rb:3 spec/empty_spec.rb:3
-        spec/area_spec.rb:1 spec/labels_spec.rb:1 spec/safe_spec.rb:1 spec/ready_spec.rb:1]
-      {"contexts" => contexts, "coverage" => {"lib/calc.rb" => entry, "lib/shapes.rb" => shapes_entry}}
+        spec/area_spec.rb:1 spec/labels_spec.rb:1 spec/safe_spec.rb:1 spec/ready_spec.rb:1 (boot)]
+      calc = entry.merge("contexts" => entry.fetch("contexts").merge("7" => boot_bits))
+      {"contexts" => contexts, "coverage" => {"lib/calc.rb" => calc, "lib/shapes.rb" => shapes_entry}}
     end
 
     def every_file = "spec/add_spec.rb\nspec/doubled_spec.rb\nspec/empty_spec.rb\n"
@@ -209,6 +214,18 @@ RSpec.describe SimpleCov::CLI do
 
       it "runs the whole suite" do
         expect(JSON.parse(affected("--json") && stdout.string)).to include("full_suite" => true, "tests" => [])
+      end
+    end
+
+    context "with an edit to a unit that ran both as the file loaded and inside a test" do
+      def boot_bits = line_bits(3, 4, 5, 8, 13, 14, 15, 18)
+
+      before { edit!("a + b", "a - b") }
+
+      it "runs the whole suite" do
+        affected
+
+        expect(stdout.string).to be_empty
       end
     end
 

@@ -1,5 +1,38 @@
 import { describe, expect, test } from 'bun:test';
-import { decodeFileContexts, contextIdsForLine, coveredOutsideCount } from '../src/contexts';
+import { decodeFileContexts, contextIdsForLine, coveredOutsideCount, dropBootContext } from '../src/contexts';
+import type { CoverageData } from '../src/types';
+
+describe('dropBootContext', () => {
+  const report = (contexts: string[] | undefined) => ({
+    contexts,
+    coverage: { 'lib/a.rb': { contexts: { '0': '1', '1': '3' } }, 'lib/b.rb': {} }
+  }) as unknown as CoverageData;
+
+  test('leaves boot in no file table, so its lines count as covered outside tests', () => {
+    const data = report(['spec/a_spec.rb:1', '(boot)']);
+    dropBootContext(data);
+    expect(data.coverage['lib/a.rb'].contexts).toEqual({ '0': '1' });
+    expect(coveredOutsideCount(data.coverage['lib/a.rb'].contexts, [1, 1])).toBe(1);
+  });
+
+  test('keeps the context list, so the other indices still resolve', () => {
+    const data = report(['spec/a_spec.rb:1', '(boot)']);
+    dropBootContext(data);
+    expect(data.contexts).toEqual(['spec/a_spec.rb:1', '(boot)']);
+  });
+
+  test('changes nothing in a recording without boot', () => {
+    const data = report(['spec/a_spec.rb:1', 'spec/b_spec.rb:2']);
+    dropBootContext(data);
+    expect(data.coverage['lib/a.rb'].contexts).toEqual({ '0': '1', '1': '3' });
+  });
+
+  test('changes nothing in a report without a recording', () => {
+    const data = report(undefined);
+    dropBootContext(data);
+    expect(data.coverage['lib/a.rb'].contexts).toEqual({ '0': '1', '1': '3' });
+  });
+});
 
 describe('decodeFileContexts', () => {
   test('decodes a single-context hex bitmap into per-line context indices', () => {

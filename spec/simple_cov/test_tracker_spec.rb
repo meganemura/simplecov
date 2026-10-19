@@ -86,13 +86,29 @@ RSpec.describe SimpleCov::TestTracker do
         tracker.track("spec/thing_spec.rb:1") { :ran }
       end
 
-      it "attributes every executed line to the test" do
-        expect(tracker.recorded_map.covering(lib_file, 1)).to eq(["spec/thing_spec.rb:1"])
+      it "attributes every executed line to the test, and to boot, since the file loaded in it" do
+        expect(tracker.recorded_map.covering(lib_file, 1)).to eq(["(boot)", "spec/thing_spec.rb:1"])
       end
 
       it "attributes no unexecuted line to the test" do
         expect(tracker.recorded_map.covering(lib_file, 3)).to eq([])
       end
+    end
+
+    it "charges no file the segment opened with to boot" do
+      stub_peeks({lib_file => {lines: [0]}}, {lib_file => {lines: [1]}})
+
+      tracker.track("spec/thing_spec.rb:1") { :ran }
+
+      expect(tracker.recorded_map.covering(lib_file, 1)).to eq(["spec/thing_spec.rb:1"])
+    end
+
+    it "charges a file boot's own segment loaded to boot once" do
+      stub_peeks({}, {lib_file => {lines: [1]}})
+
+      tracker.track(described_class::BOOT) { :ran }
+
+      expect(tracker.recorded_map.to_h["files"]).to eq(lib_file => {"0" => "1"})
     end
 
     context "with bare line arrays, the shape a foreign lines-only Coverage.start produces" do
@@ -500,9 +516,11 @@ RSpec.describe SimpleCov::TestTracker do
     end
 
     let(:around_blocks) { [] }
+    let(:context_blocks) { [] }
     let(:fake_config) do
       config = instance_double(RSpec::Core::Configuration)
       allow(config).to receive(:around) { |&block| around_blocks << block }
+      allow(config).to receive(:prepend_before).with(:context) { |&block| context_blocks << block }
       config
     end
     let(:fake_rspec) do
@@ -529,6 +547,16 @@ RSpec.describe SimpleCov::TestTracker do
       it "runs it" do
         expect(procsy).to have_received(:run)
       end
+    end
+
+    it "marks each top-level group as its context hooks start" do
+      described_class.install_rspec_hook(fake_rspec)
+      group = Class.new
+      allow(described_class).to receive(:mark_rspec_group)
+
+      group.new.instance_exec(&context_blocks.first)
+
+      expect(described_class).to have_received(:mark_rspec_group).with(group)
     end
 
     context "when installed twice in one process" do
@@ -569,6 +597,42 @@ RSpec.describe SimpleCov::TestTracker do
       described_class.install_rspec_hook
 
       expect(RSpec).not_to have_received(:configure)
+    end
+  end
+
+  describe ".mark_rspec_group" do
+    let(:hooks) { [] }
+    let(:outer) do
+      registered = hooks
+      Class.new do
+        define_singleton_method(:metadata) { {rerun_file_path: "./spec/a_spec.rb"} }
+        define_singleton_method(:prepend_before) { |scope, &block| registered << [self, :before, scope, block] }
+        define_singleton_method(:prepend_after) { |scope, &block| registered << [self, :after, scope, block] }
+      end
+    end
+    let!(:inner) { Class.new(outer) }
+    let!(:innermost) { Class.new(inner) }
+
+    before do
+      allow(SimpleCov).to receive(:track_test).and_yield
+      described_class.mark_rspec_group(outer)
+    end
+
+    it "opens the spec file's context before the group's own hooks" do
+      expect(SimpleCov).to have_received(:track_test).with("spec/a_spec.rb").once
+    end
+
+    it "gives every nested group a boundary before and after its context hooks" do
+      expect(hooks.map { |group, kind, scope, _| [group, kind, scope] }).to contain_exactly(
+        [outer, :after, :context], [inner, :before, :context], [inner, :after, :context],
+        [innermost, :before, :context], [innermost, :after, :context]
+      )
+    end
+
+    it "charges each boundary to the spec file" do
+      hooks.each { |_, _, _, block| Object.new.instance_exec(&block) }
+
+      expect(SimpleCov).to have_received(:track_test).with("spec/a_spec.rb").exactly(6).times
     end
   end
 

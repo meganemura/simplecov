@@ -400,8 +400,14 @@ result.contexts.covering("lib/simplecov/result.rb", 42)
 
 The data layer speaks of contexts rather than tests because the mechanism is general (coverage.py calls the same
 idea dynamic contexts, and a future Coverage library feature would likely use the same word). Under `track_tests`
-every context is one test. `covering` accepts absolute or project-relative paths and answers with the sorted ids,
-and `contexts` lists every recorded id, including tests whose runs covered nothing new.
+every context is one test, with two exceptions that hold code no single test ran. `(boot)` holds what runs outside
+every test: everything from `SimpleCov.start` to the first test (the test helper, the application, each spec file's
+own body as it loads), and the class body of any file a test loads for the first time, which runs once per process
+for whichever test comes first though every later test depends on it as much. And a spec file's own path, with no
+line number, holds what its example groups' `before(:context)` and `after(:context)` hooks run, which serves every
+example of the group. `covering` accepts absolute or project-relative paths and answers with the sorted ids, and
+`contexts` lists every recorded id, including tests whose runs covered nothing new. `simplecov tests` and the HTML
+report never list `(boot)` as a test, and `simplecov affected` runs the whole suite when a change reaches its lines.
 
 The map also flows into `coverage.json`, the JSON formatter's schema'd public artifact, as a document-level
 `contexts` array of ids plus per-file hex bitmaps of the lines each context executed. That is the durable form

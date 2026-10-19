@@ -25,6 +25,7 @@ module SimpleCov
           {
             tests: [], triggers: [], picked: Set.new, changed: changed, contexts: contexts,
             known: contexts.each_with_object(Set.new) { |id, set| set << test_file_of(id) },
+            boot: contexts.index(CoverageFile::BOOT_CONTEXT),
             index: CoverageFile.exact_index(coverage), root: root, opts: opts, stderr: stderr
           } #: Hash[Symbol, untyped]
         end
@@ -76,14 +77,16 @@ module SimpleCov
         # Only the tests that ran a changed unit, when the units can tell; every
         # test touching the file otherwise. A file that ran with no test on
         # record for it ran only as files loaded, so every test may depend on
-        # it, and so does a changed unit that ran that way.
+        # it, and so does a changed unit that ran that way, which a report
+        # recorded with boot says outright.
         def select_covering(path, entry, state)
           table = covering_table(path, entry, state)
           return unless table
 
-          picked = ChangedUnits.contexts(entry, table, current_source(path, state))
+          boot = table.delete(state.fetch(:boot)) || 0
+          picked = ChangedUnits.contexts(entry, table, current_source(path, state), boot: boot)
           picked ||= unrecorded?(entry, table) ? ChangedUnits::LOAD_TIME : table.keys
-          return note_load_time(path, state) if picked.equal?(ChangedUnits::LOAD_TIME)
+          return note_load_time(path, state) if picked.is_a?(Symbol)
 
           picked.each { |index| select_context(state.fetch(:contexts).fetch(index), path, state) }
         end

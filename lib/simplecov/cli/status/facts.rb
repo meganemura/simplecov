@@ -10,7 +10,7 @@ module SimpleCov
           contexts = document["contexts"]
           meta_facts(document).merge(
             totals: totals(document["total"]),
-            contexts: (contexts.size if contexts.instance_of?(Array)),
+            contexts: (CoverageFile.tests_in(contexts).size if contexts.instance_of?(Array)),
             resultset_path: resultset_path, resultset: readable_resultset(resultset_path)
           )
         end

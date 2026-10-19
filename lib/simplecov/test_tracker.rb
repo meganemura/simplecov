@@ -21,8 +21,17 @@ module SimpleCov
   # `:oneshot_line`. And tests overlapping across threads cannot be told
   # apart, because the counters being diffed are process-global.
   #
+  # Code that runs outside every test is recorded too, under the context
+  # `BOOT`, which no test owns: what runs from the start of tracking to the
+  # first test (the test helper, the application, each spec file's own
+  # body), and any file's first load inside a test, which runs its class
+  # body once per process for whichever test came first though every later
+  # test depends on it as much. A selection that sees a change reach `BOOT`
+  # cannot name the tests it affects, and runs them all.
   #
   class TestTracker
+    BOOT = "(boot)"
+
     attr_reader :map
 
     # The context id everything since the last boundary belongs to, and the
@@ -120,7 +129,8 @@ module SimpleCov
     # process loaded, branch and method tables included), so recording settles
     # at segment boundaries: consecutive tracks with one context id share one
     # open segment and pay nothing in between. In-root code that runs between
-    # two segments is attributed to the later one, the documented price.
+    # two tracks stays in the earlier one's segment, the documented price,
+    # which is why RSpec's group hooks get boundaries of their own.
     def open_segment(id)
       return if @segment&.id.eql?(id)
 
@@ -129,9 +139,17 @@ module SimpleCov
       @segment = Segment.new(id, boundary)
     end
 
+    # A file absent from the segment's opening peek loaded during it, so
+    # every line it ran there, its class body included, is also charged to
+    # `BOOT`.
     def close_segment(closing)
       segment = @segment
-      @map.record(segment.id, @delta.call(segment.opening, closing)) if segment
+      return unless segment
+
+      lines = @delta.call(segment.opening, closing)
+      @map.record(segment.id, lines)
+      loaded = lines.reject { |path, _| segment.opening.key?(path) }
+      @map.record(BOOT, loaded) unless loaded.empty? || segment.id.eql?(BOOT)
     end
 
     def flush_segment(closing)

@@ -1,5 +1,7 @@
 module SimpleCov
   class TestTracker
+    BOOT: String
+
     @delta: Delta
     @granularity: Symbol
     @segment: Segment?
@@ -32,6 +34,10 @@ module SimpleCov
     def self.install_rspec_hook: (?untyped rspec) -> void
 
     def self.rspec_module: () -> untyped
+
+    def self.mark_rspec_group: (untyped group) -> void
+
+    def self.nested_groups: (untyped group) -> Array[untyped]
 
     def self.reset_rspec_hook!: () -> void
 

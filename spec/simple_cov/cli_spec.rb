@@ -257,7 +257,7 @@ RSpec.describe SimpleCov::CLI do
     def write_stale_fixture
       repo!
       first_commit = Dir.chdir(tmp) { `git rev-parse HEAD~1`.strip }
-      write_report(commit: first_commit, contexts: ["spec/a_spec.rb:1", "spec/b_spec.rb:2"])
+      write_report(commit: first_commit, contexts: ["spec/a_spec.rb:1", "(boot)", "spec/b_spec.rb:2"])
       File.write(resultset_path, JSON.dump("RSpec" => {"coverage" => {}, "timestamp" => (Time.now - 300).to_i}))
       first_commit
     end
@@ -2637,10 +2637,10 @@ RSpec.describe SimpleCov::CLI do
 
     let(:payload) do
       {
-        "contexts" => ["spec/result_spec.rb:42", "spec/result_spec.rb:57"],
+        "contexts" => ["spec/result_spec.rb:42", "(boot)", "spec/result_spec.rb:57"],
         "coverage" => {
-          result_file => {"lines" => [nil, 1, 2, 0], "contexts" => {"0" => "6", "1" => "4"}},
-          quiet_file => {"lines" => [1, nil]}
+          result_file => {"lines" => [nil, 1, 2, 0], "contexts" => {"0" => "6", "1" => "3", "2" => "4"}},
+          quiet_file => {"lines" => [1, nil], "contexts" => {"1" => "1"}}
         }
       }
     end
@@ -2673,6 +2673,12 @@ RSpec.describe SimpleCov::CLI do
       run("tests", "--input", json_path, "lib/result.rb:2")
 
       expect(stdout.string).to eq("spec/result_spec.rb:42\n")
+    end
+
+    it "lists no test for a line that ran only while no test was recorded" do
+      run("tests", "--input", json_path, "lib/quiet.rb:1")
+
+      expect(stderr.string).to eq("simplecov tests: no recorded test covers lib/quiet.rb:1\n")
     end
 
     context "with a line no test covers" do
@@ -2737,7 +2743,7 @@ RSpec.describe SimpleCov::CLI do
 
     context "with an empty recording" do
       before do
-        File.write(json_path, JSON.dump(payload.merge("contexts" => [])))
+        File.write(json_path, JSON.dump("contexts" => ["(boot)"], "coverage" => {quiet_file => {"lines" => [1, nil]}}))
         run("tests", "--input", json_path)
       end
 
@@ -3033,11 +3039,11 @@ RSpec.describe SimpleCov::CLI do
 
     let(:payload) do
       {
-        "contexts" => ["spec/d_spec.rb:40", "spec/a_spec.rb:10", "spec/b_spec.rb:20", "spec/c_spec.rb:30"],
+        "contexts" => ["spec/d_spec.rb:40", "spec/a_spec.rb:10", "spec/b_spec.rb:20", "spec/c_spec.rb:30", "(boot)"],
         "coverage" => {
           result_file => {"lines" => [nil, 1, 2, 0], "contexts" => {"1" => "6", "2" => "4"}},
           other_file => {"lines" => [1], "contexts" => {"3" => "1"}},
-          quiet_file => {"lines" => [1, nil]}
+          quiet_file => {"lines" => [1, nil], "contexts" => {"4" => "1"}}
         }
       }
     end
@@ -3078,6 +3084,14 @@ RSpec.describe SimpleCov::CLI do
       it "notes it on stderr" do
         expect(stderr.string).to eq("simplecov tests: no redundant test covers lib/result.rb:2\n")
       end
+    end
+
+    it "counts a line boot also ran as covered without the test, and never lists boot" do
+      payload["coverage"][other_file]["contexts"] = {"3" => "1", "4" => "1"}
+      File.write(json_path, JSON.dump(payload))
+      run("tests", "--input", json_path, "--redundant")
+
+      expect(stdout.string).to eq("spec/b_spec.rb:20\nspec/c_spec.rb:30\nspec/d_spec.rb:40\n")
     end
 
     it "lists both of two tests covering exactly the same lines" do

@@ -280,14 +280,16 @@ again for an edit inside it, while a test that only ran the method around it doe
 lines, and moving a unit among its neighbors change no unit, so they select nothing. Everything the units cannot
 pin down selects every test touching the file, as before: a change outside every unit (a constant, a one-line
 method, a `private`, a magic comment), a changed parameter list, a method added, removed, or renamed, and a report
-written with `source_in_json false` or a file that does not parse. One case is narrower than the file rule: a unit
-that ran both while files loaded and inside some test is charged to the tests that ran it, so a test that only reads
-what the load-time run left behind is not selected. Tests still run by file, since that is what runners accept.
+written with `source_in_json false` or a file that does not parse. Tests still run by file, since that is what
+runners accept.
 
-Code that runs while files load, before any test starts, has coverage but no test on record: a spec file's class
-body that calls a macro, for example. No recorded test can stand for it, so a change that reaches it runs the whole
-suite rather than selecting nothing. That covers a changed unit that ran while no test was being recorded, and a
-changed file that ran with no test on record at all.
+Code that runs while files load has coverage but no test of its own: a spec file's class body that calls a macro,
+for example, or the class body of a file a test loads first. `track_tests` charges it to the `(boot)` context (see
+[Configuration](Configuration.md#tracking-which-test-covers-each-line)), and no recorded test can stand for it, so a
+change that reaches it runs the whole suite rather than selecting nothing. That covers a changed unit with a line in
+`(boot)`, even when some test also ran it, and a changed file that ran with no test on record at all. A report from
+an earlier 1.3 release has no `(boot)`, so there a unit counts as load-time code when it ran and no test is on
+record for it.
 
 The set intersection is the easy half. The hard half is knowing when to distrust the map, because a test map is
 stale the moment something changes that no test mentions by name. Any changed file outside the tracked set falls

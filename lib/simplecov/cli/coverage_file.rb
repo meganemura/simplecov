@@ -18,7 +18,15 @@ module SimpleCov
                  covered: "covered_methods", missed: "missed_methods", total: "total_methods"}
       }.freeze
 
+      # The context `track_tests` charges with code that ran outside every test
+      # (`TestTracker::BOOT`): a recorded context, but no test to list or run.
+      BOOT_CONTEXT = "(boot)"
+
       extend self
+
+      def tests_in(contexts)
+        contexts - [BOOT_CONTEXT]
+      end
 
       # An exact match, the absolute path or the literal string passed, wins over
       # a suffix match, so a nested "vendor/lib/foo.rb" can't shadow the real

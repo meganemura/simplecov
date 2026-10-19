@@ -3,6 +3,10 @@ module SimpleCov
     module CoverageFile
       CRITERIA: ::Hash[::Symbol, ::Hash[::Symbol, ::String]]
 
+      BOOT_CONTEXT: String
+
+      def self?.tests_in: (Array[String] contexts) -> Array[String]
+
       def self?.lookup: (Hash[String, untyped] coverage_hash, String path) -> [String, untyped]?
 
       def self?.suffix_matches: (Hash[String, untyped] coverage_hash, String path) -> Hash[String, untyped]

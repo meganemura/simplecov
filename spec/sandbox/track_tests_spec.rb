@@ -43,6 +43,48 @@ RSpec.describe "track_tests", :sandbox do
     end
   end
 
+  describe "an RSpec suite with code that runs outside its examples" do
+    before do
+      configure_simplecov(:rspec, tracking_config)
+      write_file("spec/outside_spec.rb", <<~RUBY)
+        require "spec_helper"
+
+        LOADED = SomeClass.new("load").reverse
+
+        RSpec.describe "outside" do
+          it("reads what the load left") { expect(LOADED).to eq("daol") }
+
+          describe "a nested group" do
+            before(:context) { @matched = SomeClass.new("ctx").compare_with("ctx") }
+
+            it("reads what the hook left") { expect(@matched).to be(true) }
+          end
+
+          it("loads a file") do
+            require "faked_project/untested_class"
+            expect(UntestedClass.new([]).power_level).to eq(0)
+          end
+        end
+      RUBY
+      run_command_and_expect_success("bundle exec rspec spec/outside_spec.rb --order defined")
+    end
+
+    let(:some_class) { File.join(sandbox_dir, "lib/faked_project/some_class.rb") }
+    let(:untested_class) { File.join(sandbox_dir, "lib/faked_project/untested_class.rb") }
+
+    it "charges what a spec file runs as it loads to boot" do
+      expect(stored_contexts.covering(some_class, 12)).to eq(["(boot)"])
+    end
+
+    it "charges a nested group's before(:context) to its spec file" do
+      expect(stored_contexts.covering(some_class, 16)).to eq(["spec/outside_spec.rb"])
+    end
+
+    it "charges the class body of a file a test loaded to boot" do
+      expect(stored_contexts.covering(untested_class, 3)).to include("(boot)")
+    end
+  end
+
   describe "a Minitest suite" do
     let!(:result) do
       self.bundle_with = "minitest"
