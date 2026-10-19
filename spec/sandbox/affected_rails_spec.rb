@@ -112,6 +112,25 @@ RSpec.describe "simplecov/affected/rails", :sandbox do
     end
   end
 
+  context "with one test file named, so the application loads after SimpleCov starts" do
+    before do
+      write_file("app/models/billing/invoice.rb", "module Billing\n  class Invoice\n    def total = 3\n  end\nend\n")
+      write_file("test/models/invoice_test.rb", <<~RUBY)
+        require "test_helper"
+
+        class InvoiceTest < ActiveSupport::TestCase
+          test("totals") { assert_equal 3, Billing::Invoice.new.total }
+        end
+      RUBY
+    end
+
+    it "leaves Zeitwerk's autoload of a namespace directory working" do
+      result = run_command("bin/rails test test/models/invoice_test.rb", env: {"SIMPLECOV_AFFECTED" => "all"}, timeout: 120)
+
+      expect(result.output).to include("1 runs, 1 assertions, 0 failures, 0 errors")
+    end
+  end
+
   context "with every test in one process" do
     before { run_tests(workers: 1) }
 
