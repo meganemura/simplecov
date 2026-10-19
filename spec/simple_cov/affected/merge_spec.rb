@@ -13,13 +13,14 @@ RSpec.describe SimpleCov::Affected::Merge do
   def version(digest, hits = [1]) = {digest => {"source" => ["x"], "lines" => hits}}
 
   def test(file = "spec/a_spec.rb", lines: {"lib/a.rb" => %w[v1 1]}, reads: [], ok: true)
-    {"file" => file, "line" => 1, "ok" => ok, "time" => 0.1, "must_run" => false, "reads" => reads, "lines" => lines}
+    {"file" => file, "line" => 1, "ok" => ok, "time" => 0.1, "must_run" => false, "reads" => reads, "lines" => lines, "run" => "r1"}
   end
 
   def recording(tests: {}, files: {"lib/a.rb" => version("v1")}, latest: {"lib/a.rb" => "v1"}, **rest)
     boot = {"lines" => {}, "reads" => []}
-    {"version" => 1, "root" => root, "env" => "e", "files" => files, "latest" => latest, "tests" => tests,
-     "loads" => {}, "boot" => boot, "reads" => {}, "unmeasured" => {}}.merge(rest.transform_keys(&:to_s))
+    {"version" => 1, "root" => root, "env" => "e", "files" => files, "latest" => latest, "runs" => {"r1" => latest},
+     "tests" => tests, "loads" => {}, "boot" => boot, "reads" => {}, "unmeasured" => {}, "unloaded" => {}}
+      .merge(rest.transform_keys(&:to_s))
   end
 
   describe ".combine" do
@@ -54,6 +55,12 @@ RSpec.describe SimpleCov::Affected::Merge do
         recording(tests: {"a" => test(reads: ["w.yml"])})])
 
       expect(joined.dig("tests", "a", "reads")).to eq(%w[w.yml x.yml])
+    end
+
+    it "joins the files the parts of one run loaded" do
+      joined = described_class.combine([recording(runs: {"r1" => {"a.rb" => "1"}}), recording(runs: {"r1" => {"b.rb" => "2"}})])
+
+      expect(joined.fetch("runs")).to eq("r1" => {"a.rb" => "1", "b.rb" => "2"})
     end
 
     it "joins the files each part ran in full" do
@@ -124,6 +131,19 @@ RSpec.describe SimpleCov::Affected::Merge do
       merged = described_class.onto(previous.merge("files" => {"lib/a.rb" => version("v1").merge(version("v0"))}), run, root)
 
       expect(merged.fetch("files").transform_values(&:keys)).to eq("lib/a.rb" => %w[v1 v3])
+    end
+
+    it "keeps the runs some record was recorded in, with the versions they loaded" do
+      run = recording(runs: {"r1" => {"lib/a.rb" => "v0"}, "gone" => {}}, files: {"lib/a.rb" => version("v0").merge(version("v1"))})
+
+      expect(described_class.onto(nil, run.merge("tests" => {"a" => test}), root).values_at("runs", "files"))
+        .to eq([{"r1" => {"lib/a.rb" => "v0"}}, {"lib/a.rb" => version("v0").merge(version("v1"))}])
+    end
+
+    it "forgets a file it lists as unloaded once some process loaded it" do
+      merged = described_class.onto(nil, recording(unloaded: {"lib/a.rb" => "x", "bench.rb" => "y"}), root)
+
+      expect(merged.fetch("unloaded")).to eq("bench.rb" => "y")
     end
 
     it "does not keep the run's list of complete files" do

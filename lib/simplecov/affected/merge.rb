@@ -24,7 +24,7 @@ module SimpleCov
     #
     module Merge
       # Recording-wide keys whose values the later document replaces per key.
-      PER_KEY = %w[latest reads unmeasured].freeze
+      PER_KEY = %w[latest reads unmeasured unloaded].freeze
 
       extend self
 
@@ -49,6 +49,7 @@ module SimpleCov
       def join(into, document)
         joined = into.merge("root" => document["root"], "env" => document["env"])
         joined["files"] = join_files(into.fetch("files"), document.fetch("files"))
+        joined["runs"] = join_files(into.fetch("runs"), document.fetch("runs"))
         PER_KEY.each { |key| joined[key] = into.fetch(key).merge(document.fetch(key)) }
         joined["tests"] = join_records(into.fetch("tests"), document.fetch("tests"))
         joined["loads"] = join_records(into.fetch("loads"), document.fetch("loads"))
@@ -57,8 +58,10 @@ module SimpleCov
         joined
       end
 
+      # Per file its versions, or per run the version of each file it loaded:
+      # two processes of one run each loaded some of the files.
       def join_files(into, files)
-        into.merge(files) { |_relative, versions, more| versions.merge(more) }
+        into.merge(files) { |_key, versions, more| versions.merge(more) }
       end
 
       def join_records(into, records)
@@ -95,20 +98,23 @@ module SimpleCov
       end
 
       # Keeps what something still points at: a test whose file exists, a load
-      # context of such a file, and of each file the versions a record names
-      # plus the one last seen.
+      # context of such a file, the runs those were recorded in, and of each
+      # file the versions a record or a run names plus the one last seen.
       def prune(document, root)
         tests = document.fetch("tests").select { |_id, test| File.file?(File.join(root, test.fetch("file").to_s)) }
         loads = document.fetch("loads").select { |file, _load| File.file?(File.join(root, file)) }
+        runs = document.fetch("runs").slice(*(tests.values + loads.values).map { |record| record["run"] }.uniq)
         named = Hash.new { |hash, relative| hash[relative] = Set.new } #: Hash[String, Set[String]]
         [*tests.values, *loads.values, document.fetch("boot")].each do |record|
           record.fetch("lines").each { |relative, (digest, _hex)| named[relative] << digest }
         end
-        document.fetch("latest").each { |relative, digest| named[relative] << digest }
-        files = document.fetch("files").to_h do |relative, versions|
-          [relative, versions.slice(*named[relative])]
+        [document.fetch("latest"), *runs.values].each do |versions|
+          versions.each { |relative, digest| named[relative] << digest }
         end
-        document.merge("tests" => tests, "loads" => loads, "files" => files.reject { |_relative, versions| versions.empty? })
+        files = document.fetch("files").to_h { |relative, versions| [relative, versions.slice(*named[relative])] }
+        loaded = document.fetch("files").keys.to_set | document.fetch("unmeasured").keys
+        document.merge("tests" => tests, "loads" => loads, "runs" => runs, "unloaded" => document.fetch("unloaded").except(*loaded),
+          "files" => files.reject { |_relative, versions| versions.empty? })
       end
     end
   end

@@ -8,10 +8,10 @@ RSpec.describe SimpleCov::Affected::Capture do
   let(:recorder) { SimpleCov::Affected::Recorder.new(root, File.join(root, "coverage")) }
   let(:map) { SimpleCov::ContextMap.new }
   let(:result) do
-    coverage = {lib => {"lines" => [1, 2, nil]}, spec => {"lines" => [1, 1]}}
+    coverage = {lib => {lines: [1, 2, nil]}, spec => {"lines" => [1, 1]}}
     Struct.new(:contexts, :original_result).new(map, coverage)
   end
-  let(:document) { described_class.call(recorder, result, root) }
+  let(:document) { described_class.call(recorder, result, root, run: "run-1") }
 
   def lib = File.join(root, "lib/calc.rb")
 
@@ -43,6 +43,20 @@ RSpec.describe SimpleCov::Affected::Capture do
       .to eq(digest_of(spec) => {"source" => ["it 'adds' do", "end"], "lines" => [1, 1]})
   end
 
+  it "reads the hits Coverage keys by symbol" do
+    expect(document.dig("files", "lib/calc.rb", digest_of(lib), "lines")).to eq([1, 2, nil])
+  end
+
+  it "keeps the version of each file the run loaded" do
+    expect(document.fetch("runs")).to eq("run-1" => document.fetch("latest"))
+  end
+
+  it "lists the project's Ruby files the process never loaded" do
+    File.write(File.join(root, "bench.rb"), "1\n")
+
+    expect(document.fetch("unloaded")).to eq("bench.rb" => digest_of(File.join(root, "bench.rb")))
+  end
+
   it "names each file's version" do
     expect(document.fetch("latest")).to eq("lib/calc.rb" => digest_of(lib), "spec/calc_spec.rb" => digest_of(spec))
   end
@@ -50,13 +64,13 @@ RSpec.describe SimpleCov::Affected::Capture do
   it "keeps one test's record in one object" do
     expect(document.fetch("tests").fetch("spec/calc_spec.rb::adds")).to include(
       "file" => "spec/calc_spec.rb", "line" => 1, "ok" => true, "must_run" => false, "reads" => [],
-      "lines" => {"lib/calc.rb" => [digest_of(lib), "2"]}
+      "lines" => {"lib/calc.rb" => [digest_of(lib), "2"]}, "run" => "run-1"
     )
   end
 
   it "keeps what a test file ran and read as it loaded" do
     expect(document.fetch("loads")).to eq(
-      "spec/calc_spec.rb" => {"lines" => {"spec/calc_spec.rb" => [digest_of(spec), "1"]}, "reads" => ["table.yml"]}
+      "spec/calc_spec.rb" => {"lines" => {"spec/calc_spec.rb" => [digest_of(spec), "1"]}, "reads" => ["table.yml"], "run" => "run-1"}
     )
   end
 
@@ -88,7 +102,7 @@ RSpec.describe SimpleCov::Affected::Capture do
     File.write(early, "1\n")
     loaded = [early, "thread.rb", lib, "/elsewhere/x.rb", File.join(root, "data.so")]
 
-    expect(described_class.call(recorder, result, root, loaded_features: loaded).fetch("unmeasured"))
+    expect(described_class.call(recorder, result, root, run: "run-1", loaded_features: loaded).fetch("unmeasured"))
       .to eq("lib/early.rb" => digest_of(early))
   end
 

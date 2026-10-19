@@ -76,7 +76,61 @@ in `coverage.json`'s encoding (bit N is line N+1). The other top-level keys are:
 | `reads` | A digest of every data file anything read. |
 | `unmeasured` | Project files loaded before coverage started, with a digest: their lines are unknown. |
 | `env` | A digest of the Ruby version, the platform, and the lockfile. |
+| `runs` | Per run id, the version of each file that run loaded: the tree its tests ran against. |
+| `unloaded` | The project's other Ruby files, which no process loaded, with a digest. |
 | `complete` | Only in a process's part (see below): the test files whose every test ran. |
+
+## How the selection decides
+
+The selection needs the recording and the working tree, nothing else: no git, and no base ref. Each recorded
+version of a file is compared with the file as it is now, so the answer holds whatever the last run was.
+
+Some changes reach every test, and then the whole suite runs, with the reason:
+
+| Reason | When |
+| --- | --- |
+| `env` | The Ruby version, the platform, or the lockfile changed. |
+| `read <path>` | A data file read before the first test file (by a helper, say) changed. |
+| `unmeasured <path>` | A project file loaded before coverage started changed. |
+| `unparsable <path>` | A changed file no longer parses. |
+| `boot <path> [<unit>]` | Code that ran before the first test file (an `RSpec.configure` block, a method a library calls as it loads) changed. |
+| `deleted <path>` | A file that ran before the first test file is gone. |
+| `no parser` | Prism cannot load on this platform. |
+
+Otherwise each recorded test gets the first reason that applies, cheapest first, or none:
+
+| Reason | When |
+| --- | --- |
+| `new` | The test has no record yet (only a run in progress can tell). |
+| `failed` | It failed last time. |
+| `must_run` | It is marked to run every time. |
+| `deleted <path>` | A file it ran is gone. |
+| `def <path> <unit>`, `block <path> <unit>` | A unit it ran changed or is gone: a multi-line `def`, block, or lambda, or a one-line `def` it called. `def <path>` alone means the unit could not be pinned down, and every test that ran a line of the file is selected. |
+| `read <path>` | A data file it read changed. |
+| `name <name>` | A name it reaches was defined differently. |
+
+A unit is what `simplecov affected` already compares (see [the CLI docs](CLI.md#affected--select-the-tests-that-touch-changed-code)).
+The code a test file's load and context hooks ran counts for that file's tests: a unit of the test file itself
+selects the tests written inside it (an example group's body selects its examples), and a unit of another file
+selects every test of the file.
+
+**Names** cover what runs once, as files load, so that no test's lines show it: constants, class and module headers,
+macros (`attr_reader :name`, `validates :email`), `def name = value`, methods with an empty body, and requires.
+Each is keyed by the name it defines, with a digest per key; a statement that defines no name (`include
+Comparable`) is keyed by its class or module. A test reaches a name when code it ran mentions it, read off the syntax
+tree: a unit's own code (the other examples of its `describe` are not), a one-line `def` it called, the classes and
+modules around them, the files they are in (`path:lib/a.rb`), and the templates it read. A few rules keep the set
+small:
+
+- Only files the run loaded define names. A new file counts as loaded unless it sits in a test directory, and its
+  names count only when no loaded file knew them, so reopening `module Rack` changes nothing.
+- A name defined in a test file is local to that file's tests.
+- A require counts only when it changes whether its target loads at all, so moving one changes nothing.
+- A changed name spreads to every static that mentions it (`FACES = [*NUMBERS]`).
+- `def name = value` and empty methods are also keyed by their class, and so is adding a method Ruby calls without
+  the project spelling its name (`initialize`, `==`, `each`, `to_s`, `method_missing`, ...): a library may call them
+  by a name no test mentions.
+- Operators are not names here: nearly every test calls `==`.
 
 ## Partial runs, forked workers, and CI shards
 

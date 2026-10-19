@@ -47,7 +47,7 @@ module SimpleCov
       return unless recorder
 
       recorder.stop_reading
-      captured = Capture.call(recorder, result, SimpleCov.root)
+      captured = Capture.call(recorder, result, SimpleCov.root, run: SimpleCov.run_id.to_s)
       Parts.write(SimpleCov.coverage_path, SimpleCov.run_id, Process.pid, captured) if captured
     end
 
