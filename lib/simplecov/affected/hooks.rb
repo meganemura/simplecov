@@ -44,20 +44,45 @@ module SimpleCov
       end
     end
 
-    # Prepended to Kernel: RSpec loads spec files with `load`, and Minitest
-    # suites `require` theirs. `require_relative` is left alone, because a
-    # prepended method would resolve the path against this file.
+    # Wrapped around Kernel's `load` and `require`: RSpec loads spec files
+    # with `load`, Minitest suites `require` theirs, and Zeitwerk autoloads
+    # through `require`. `require_relative` is left alone, because a wrapper
+    # would resolve the path against this file.
+    #
+    # The methods are aliased in, the way RubyGems, Bootsnap, and Zeitwerk
+    # wrap `require`, rather than prepended. Those libraries alias whatever
+    # `require` is when they load, and with a module prepended to Kernel the
+    # alias takes the prepended method, so their own wrapper drops out of the
+    # chain. A Rails helper starts SimpleCov before the application loads, and
+    # Zeitwerk's autoload of a directory (a namespace with no file of its
+    # own) then reached the plain `require` and failed.
     module LoadHook
+      ORIGINALS = {load: :simplecov_affected_original_load, require: :simplecov_affected_original_require}.freeze
+
+      def self.install(kernel = ::Kernel)
+        return if kernel.private_method_defined?(ORIGINALS.fetch(:require))
+
+        ORIGINALS.each do |name, original|
+          kernel.send(:alias_method, original, name)
+          kernel.send(:define_method, name, instance_method(name))
+          kernel.send(:private, name, original)
+        end
+      end
+
       private
 
-      def load(file, *)
+      def load(file, *rest)
         recorder = Affected.recorder
-        recorder ? recorder.loading(file) { super } : super
+        return simplecov_affected_original_load(file, *rest) unless recorder
+
+        recorder.loading(file) { simplecov_affected_original_load(file, *rest) }
       end
 
       def require(feature)
         recorder = Affected.recorder
-        recorder ? recorder.loading(feature) { super } : super
+        return simplecov_affected_original_require(feature) unless recorder
+
+        recorder.loading(feature) { simplecov_affected_original_require(feature) }
       end
     end
 
