@@ -1,0 +1,15 @@
+module SimpleCov
+  module Affected
+    module Audit
+      extend Audit
+
+      NAME: String
+
+      def write: (String coverage_path, Plan plan, Hash[String, untyped]? run) -> void
+
+      def report: (Plan plan, Hash[String, untyped] tests) -> Hash[String, untyped]
+
+      def summary: (Hash[String, untyped] report) -> String
+    end
+  end
+end

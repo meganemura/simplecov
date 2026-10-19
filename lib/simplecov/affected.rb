@@ -6,6 +6,8 @@ require_relative "affected/recorder"
 require_relative "affected/capture"
 require_relative "affected/merge"
 require_relative "affected/parts"
+require_relative "affected/plan"
+require_relative "affected/audit"
 require_relative "affected/hooks"
 require_relative "affected/rspec"
 require_relative "affected/minitest"
@@ -18,28 +20,51 @@ module SimpleCov
   # code test files run as they load to those files' tests, records outcomes,
   # times, and data-file reads, and keeps all of it in
   # `coverage/.affected.json`. The `affected` setting decides whether a run
-  # also narrows to the tests a change can affect.
+  # also narrows to the tests a change can affect (`:select`), or runs them
+  # all and writes down what narrowing would have left out (`:audit`).
   #
   module Affected
     extend self
 
-    attr_reader :recorder
+    attr_reader :recorder, :plan
 
     # Once per process tree, once tracking has a tracker: a forked worker
-    # inherits the recorder, its hooks, and its open boot segment.
+    # inherits the recorder, its hooks, its open boot segment, and the plan.
+    # The plan comes first, before reads are hooked.
     def start
-      return if @recorder || SimpleCov.test_tracker.nil? || SimpleCov.affected.equal?(:off)
+      mode = SimpleCov.affected
+      return if @recorder || SimpleCov.test_tracker.nil? || mode.equal?(:off)
 
+      @mode = mode
+      plan = @plan = Plan.load(SimpleCov.root, SimpleCov.coverage_path) unless mode.equal?(:all)
+      $stderr.puts "SimpleCov affected: #{plan.summary}" if plan && mode.equal?(:select) # rubocop:disable Style/StderrPuts
       recorder = @recorder = Recorder.new(SimpleCov.root, SimpleCov.coverage_path)
       File.singleton_class.prepend(ReadHook)
       Kernel.prepend(LoadHook)
       recorder.start
-      RSpec.install(TestTracker.rspec_module)
+      RSpec.install(TestTracker.rspec_module, narrow: narrowing?)
       install_minitest
     end
 
     def install_minitest
-      Minitest.install(::Minitest::Test) if @recorder && defined?(::Minitest::Test)
+      Minitest.install(::Minitest::Test, narrow: narrowing?) if @recorder && defined?(::Minitest::Test)
+    end
+
+    # Only `:select` leaves tests out, and only when the plan names some.
+    def narrowing?
+      plan = @plan
+      !!(plan && @mode.equal?(:select) && !plan.full)
+    end
+
+    # Whether this run runs the test, asked by the runners' filters. A test
+    # left out narrows its file: the file still defines the ids it skipped,
+    # so the recording keeps their records.
+    def run?(id)
+      plan = @plan
+      return true if plan.nil? || plan.reason(id)
+
+      @recorder&.narrowed(id.split("::", 2).first.to_s)
+      false
     end
 
     def capture(result)
@@ -52,7 +77,9 @@ module SimpleCov
     end
 
     def finish
-      Parts.finish(SimpleCov.coverage_path, SimpleCov.run_id, SimpleCov.root, timeout: SimpleCov.merge_timeout)
+      run = Parts.finish(SimpleCov.coverage_path, SimpleCov.run_id, SimpleCov.root, timeout: SimpleCov.merge_timeout)
+      plan = @plan
+      Audit.write(SimpleCov.coverage_path, plan, run) if plan && @mode.equal?(:audit)
     end
   end
 end

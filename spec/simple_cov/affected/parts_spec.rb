@@ -42,9 +42,15 @@ RSpec.describe SimpleCov::Affected::Parts do
   end
 
   it "leaves the sidecar alone when no part was written" do
-    finish
+    expect([finish, sidecar]).to eq([nil, nil])
+  end
 
-    expect(sidecar).to be_nil
+  it "answers the run's own recording, its processes joined" do
+    SimpleCov::Affected::Sidecar.write(File.join(coverage_path, ".affected.json"), part("old"))
+    described_class.write(coverage_path, "run 1", 11, part("a"))
+    described_class.write(coverage_path, "run 1", 12, part("b"))
+
+    expect(finish.fetch("tests").keys).to eq(%w[a b])
   end
 
   it "leaves out another run's parts" do

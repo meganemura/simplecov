@@ -40,6 +40,18 @@ RSpec.describe SimpleCov::Affected::RSpec do
       expect(config).to have_received(:before).with(:suite)
     end
 
+    it "leaves the plan's skipped examples out when narrowing" do
+      described_class.install(rspec, narrow: true)
+
+      expect(config).to have_received(:filter_run_excluding).with(affected_id: a_kind_of(Proc))
+    end
+
+    it "filters nothing otherwise" do
+      described_class.install(rspec)
+
+      expect(config).not_to have_received(:filter_run_excluding)
+    end
+
     it "does nothing without RSpec" do
       expect(described_class.install(nil)).to be_nil
     end
@@ -48,6 +60,24 @@ RSpec.describe SimpleCov::Affected::RSpec do
       2.times { described_class.install(rspec) }
 
       expect(config).to have_received(:around).once
+    end
+  end
+
+  describe ".skip?" do
+    after { SimpleCov::Affected.instance_variable_set(:@plan, nil) }
+
+    before { SimpleCov::Affected.instance_variable_set(:@plan, SimpleCov::Affected::Plan.new(nil, {"spec/a_spec.rb::a" => nil})) }
+
+    it "skips an example the plan leaves out" do
+      expect(described_class.skip?("spec/a_spec.rb::a")).to be(true)
+    end
+
+    it "runs an example the plan runs" do
+      expect(described_class.skip?("spec/a_spec.rb::b")).to be(false)
+    end
+
+    it "runs an example from outside the project, which has no id" do
+      expect(described_class.skip?(nil)).to be(false)
     end
   end
 

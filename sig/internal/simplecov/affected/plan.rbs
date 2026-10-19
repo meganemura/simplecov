@@ -1,0 +1,20 @@
+module SimpleCov
+  module Affected
+    class Plan
+      NEW: String
+      FULL: String
+
+      attr_reader full: String?
+
+      attr_reader reasons: Hash[String, String?]
+
+      def self.load: (String root, String coverage_path) -> Plan
+
+      def initialize: (String? full, Hash[String, String?] reasons) -> void
+
+      def reason: (String id) -> String?
+
+      def summary: () -> String
+    end
+  end
+end
