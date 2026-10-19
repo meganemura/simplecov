@@ -1,0 +1,85 @@
+module SimpleCov
+  module Affected
+    interface _FileReaders
+      def open: (?untyped path, *untyped args, **untyped kwargs) ?{ (*untyped) -> untyped } -> untyped
+
+      def read: (?untyped path, *untyped args, **untyped kwargs) ?{ (*untyped) -> untyped } -> untyped
+
+      def binread: (?untyped path, *untyped args, **untyped kwargs) ?{ (*untyped) -> untyped } -> untyped
+
+      def readlines: (?untyped path, *untyped args, **untyped kwargs) ?{ (*untyped) -> untyped } -> untyped
+
+      def foreach: (?untyped path, *untyped args, **untyped kwargs) ?{ (*untyped) -> untyped } -> untyped
+
+      def new: (?untyped path, *untyped args, **untyped kwargs) ?{ (*untyped) -> untyped } -> untyped
+    end
+
+    module ReadHook : _FileReaders
+      WRITING: Regexp
+
+      def self.note: (untyped path, untyped mode) -> void
+
+      def open: (?untyped path, *untyped args, **untyped kwargs) ?{ (*untyped) -> untyped } -> untyped
+
+      def read: (?untyped path, *untyped args, **untyped kwargs) ?{ (*untyped) -> untyped } -> untyped
+
+      def binread: (?untyped path, *untyped args, **untyped kwargs) ?{ (*untyped) -> untyped } -> untyped
+
+      def readlines: (?untyped path, *untyped args, **untyped kwargs) ?{ (*untyped) -> untyped } -> untyped
+
+      def foreach: (?untyped path, *untyped args, **untyped kwargs) ?{ (*untyped) -> untyped } -> untyped
+
+      def new: (?untyped path, *untyped args, **untyped kwargs) ?{ (*untyped) -> untyped } -> untyped
+    end
+
+    interface _Loading
+      def load: (untyped file, *untyped) -> bool
+
+      def require: (untyped feature) -> bool
+    end
+
+    module LoadHook : _Loading
+      private
+
+      def load: (untyped file, *untyped) -> bool
+
+      def require: (untyped feature) -> bool
+    end
+
+    interface _TrackerHost
+      def rspec_example_id: (untyped example) -> String
+
+      def minitest_test_id: (untyped test) -> String
+
+      def install_minitest_hook: (*untyped) -> untyped
+    end
+
+    module TrackerHooks : _TrackerHost
+      def rspec_example_id: (untyped example) -> String
+
+      def minitest_test_id: (untyped test) -> String
+
+      def install_minitest_hook: (*untyped) -> untyped
+    end
+
+    interface _LifecycleHost
+      def start_test_tracking: () -> untyped
+
+      def collect_own_coverage: (standalone: bool) -> untyped
+
+      def result: () -> Result?
+
+      def current_run: () -> CurrentRun
+
+      def final_result_process?: () -> bool
+    end
+
+    module Lifecycle : _LifecycleHost
+      def start_test_tracking: () -> untyped
+
+      def collect_own_coverage: (standalone: bool) -> untyped
+
+      def result: () -> Result?
+    end
+  end
+end

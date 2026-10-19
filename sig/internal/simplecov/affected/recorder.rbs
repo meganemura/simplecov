@@ -1,0 +1,49 @@
+module SimpleCov
+  module Affected
+    class Recorder
+      BOOT: String
+      TEST_FILE: Regexp
+      SKIPPED_DIRS: Array[String]
+
+      class Test < ::Struct[untyped]
+        attr_accessor file: String?
+        attr_accessor line: Integer?
+        attr_accessor ok: bool
+        attr_accessor time: Float
+        attr_accessor must_run: bool
+        attr_accessor reads: Set[String]
+
+        def self.new: (String? file, Integer? line, bool ok, Float time, bool must_run, Set[String] reads) -> Test
+      end
+
+      @prefix: String
+      @coverage_prefix: String
+      @tests: Hash[String, Test]
+      @loads: Hash[String, Set[String]]
+      @boot_reads: Set[String]
+      @sink: Set[String]?
+
+      attr_reader tests: Hash[String, Test]
+      attr_reader loads: Hash[String, Set[String]]
+      attr_reader boot_reads: Set[String]
+
+      def initialize: (String root, String coverage_path) -> void
+
+      def start: () -> void
+
+      def test: (String id, file: String?, line: Integer?, ?must_run: bool) { () -> bool } -> bool
+
+      def loading: [T] (untyped path) { () -> T } -> T
+
+      def boundary: (String file) -> void
+
+      def read: (untyped path) -> void
+
+      def stop_reading: () -> void
+
+      def test_file: (untyped path) -> String?
+
+      def project_file: (untyped path) -> String?
+    end
+  end
+end

@@ -1,0 +1,23 @@
+module SimpleCov
+  module Affected
+    module Sidecar
+      extend Sidecar
+
+      VERSION: Integer
+      NAME: String
+      LOCKFILES: Array[String]
+
+      def path: (String coverage_path) -> String
+
+      def digest: (String text) -> String
+
+      def file_digest: (String path) -> String?
+
+      def env: (String root) -> String
+
+      def read: (String path) -> Hash[String, untyped]?
+
+      def write: (String path, Hash[String, untyped] data) -> void
+    end
+  end
+end

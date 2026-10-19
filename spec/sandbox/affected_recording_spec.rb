@@ -1,0 +1,95 @@
+# frozen_string_literal: true
+
+require "helper"
+require "support/sandbox_project"
+
+RSpec.describe "simplecov/affected recording", :sandbox do
+  let(:config) do
+    <<~RUBY
+      require 'simplecov'
+      require 'simplecov/affected'
+      SimpleCov.start do
+        track_tests
+        affected :all
+      end
+    RUBY
+  end
+
+  before { setup_project("faked_project") }
+
+  def sidecar = JSON.parse(read_file("coverage/.affected.json"))
+
+  def test_record(id) = sidecar.fetch("tests").fetch(id)
+
+  describe "an RSpec suite" do
+    before do
+      write_file("data/answer.yml", "answer: 42\n")
+      write_file("spec/reading_spec.rb", <<~RUBY)
+        require "spec_helper"
+        require "yaml"
+
+        SomeClass.new("loaded").reverse
+
+        RSpec.describe "reading" do
+          it "reads its data" do
+            expect(YAML.load_file("data/answer.yml")).to eq("answer" => 42)
+          end
+
+          it { expect(SomeClass.new("ab").reverse).to eq("ba") }
+
+          it "fails" do
+            expect(1).to eq(2)
+          end
+        end
+      RUBY
+      configure_simplecov(:rspec, config)
+      run_command(sorted_rspec_command)
+    end
+
+    it "names each example by its file and full description" do
+      expect(sidecar.fetch("tests").keys).to include("spec/reading_spec.rb::reading reads its data",
+        "spec/reading_spec.rb::reading {1}")
+    end
+
+    it "records the lines each example ran, against the source it ran" do
+      digest = sidecar.dig("latest", "lib/faked_project/some_class.rb")
+
+      expect(test_record("spec/reading_spec.rb::reading {1}").dig("lines", "lib/faked_project/some_class.rb"))
+        .to match([digest, /\A\h+\z/])
+    end
+
+    it "records the data files an example read" do
+      expect(test_record("spec/reading_spec.rb::reading reads its data").fetch("reads")).to eq(["data/answer.yml"])
+    end
+
+    it "records whether each example passed" do
+      expect(%w[reads\ its\ data fails].map { |name| test_record("spec/reading_spec.rb::reading #{name}").fetch("ok") })
+        .to eq([true, false])
+    end
+
+    it "charges the code a spec file runs as it loads to the file" do
+      expect(sidecar.dig("loads", "spec/reading_spec.rb", "lines")).to have_key("lib/faked_project/some_class.rb")
+    end
+
+    it "keeps the test files' sources, which the report filters out" do
+      expect(sidecar.fetch("files")).to have_key("spec/reading_spec.rb")
+    end
+  end
+
+  describe "a Minitest suite" do
+    before do
+      self.bundle_with = "minitest"
+      install_dependencies
+      configure_simplecov(:minitest, config)
+      run_command_and_expect_success("bundle exec rake minitest")
+    end
+
+    it "names each test by its file, class, and method" do
+      expect(sidecar.fetch("tests").keys).to include("minitest/some_test.rb::SomeTest#test_reverse")
+    end
+
+    it "records each test's outcome and time" do
+      expect(test_record("minitest/some_test.rb::SomeTest#test_reverse")).to include("ok" => true, "time" => a_kind_of(Float))
+    end
+  end
+end

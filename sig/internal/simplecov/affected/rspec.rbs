@@ -1,0 +1,21 @@
+module SimpleCov
+  module Affected
+    module RSpec
+      extend RSpec
+
+      @installed: bool
+
+      def install: (untyped rspec) -> void
+
+      def derive: (Hash[Symbol, untyped] metadata, Hash[untyped, Integer] undescribed) -> void
+
+      def line_in_file: (Hash[Symbol, untyped] metadata) -> Integer
+
+      def run: (untyped example) -> untyped
+
+      def mark: (untyped group) -> void
+
+      def nested: (untyped group) -> Array[untyped]
+    end
+  end
+end
