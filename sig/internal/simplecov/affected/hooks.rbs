@@ -54,6 +54,24 @@ module SimpleCov
       def install_minitest_hook: (*untyped) -> untyped
     end
 
+    interface _SegmentHost
+      def poisoned?: () -> bool
+
+      def open_segment: (String id) -> void
+    end
+
+    module TrackerAside : _SegmentHost
+      @segment: TestTracker::Segment?
+      @depth: Integer
+      @owner: Thread?
+
+      def aside: [T] (String id) { () -> T } -> T
+    end
+
+    module ForkHook : _ForkHost
+      def _fork: () -> Integer
+    end
+
     module TrackerHooks : _TrackerHost
       def rspec_example_id: (untyped example) -> String
 
@@ -81,5 +99,9 @@ module SimpleCov
 
       def result: () -> Result?
     end
+  end
+
+  class TestTracker
+    def aside: [T] (String id) { () -> T } -> T
   end
 end

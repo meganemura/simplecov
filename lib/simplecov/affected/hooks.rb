@@ -61,6 +61,35 @@ module SimpleCov
       end
     end
 
+    # Prepended to TestTracker: the segment model keeps one context open from
+    # one boundary to the next, so code that belongs to another context in
+    # the middle of a test is set aside by closing the test's segment, opening
+    # the other one, and reopening the test's after it. Only the thread that
+    # runs the tests moves the segment; another thread's code stays where it
+    # lands.
+    module TrackerAside
+      def aside(id)
+        previous = @segment&.id
+        return yield if previous.nil? || previous.eql?(id) || poisoned? || !(@depth.zero? || @owner.equal?(Thread.current))
+
+        open_segment(id)
+        begin
+          yield
+        ensure
+          open_segment(previous) unless poisoned?
+        end
+      end
+    end
+
+    # Prepended to Process's singleton class, beside SimpleCov's own fork hook.
+    module ForkHook
+      def _fork
+        pid = super
+        Affected.recorder&.forked if pid.zero?
+        pid
+      end
+    end
+
     # Prepended to TestTracker's singleton class: the contexts are named by
     # stable test ids, and Affected's runner integration goes in beside
     # SimpleCov's own, inside it.

@@ -15,8 +15,9 @@ module SimpleCov
     # with the reason (`full`): another Ruby or lockfile, a data file read
     # before the first test file, a project file loaded before coverage
     # started, a file that no longer parses, and code that ran before the
-    # first test file (a `RSpec.configure` block, a method a library calls as
-    # it loads), whose effects any test may see.
+    # first test file or as a project file loaded after it (a
+    # `RSpec.configure` block, a method a library calls as it loads, an
+    # autoloaded class body), whose effects any test may see.
     #
     # Otherwise each test gets the first reason that applies, cheapest first,
     # or nil:

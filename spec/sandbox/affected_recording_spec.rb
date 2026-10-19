@@ -141,6 +141,69 @@ RSpec.describe "simplecov/affected recording", :sandbox do
     end
   end
 
+  describe "a run that loads code after boot" do
+    def lines_of(record, path)
+      hex = record.dig("lines", path, 1) or return []
+      bits = hex.to_i(16)
+      (0...bits.bit_length).select { |index| bits[index] == 1 }.map { |index| index + 1 }
+    end
+
+    before do
+      self.bundle_with = "minitest"
+      install_dependencies
+      write_file("lib/lazy.rb", <<~RUBY)
+        class Lazy
+          def self.table
+            {"a" => 1}
+          end
+
+          TABLE = table
+
+          def value
+            TABLE.fetch("a")
+          end
+        end
+      RUBY
+      write_file("test/lazy_test.rb", <<~RUBY)
+        class LazyTest < Minitest::Test
+          def test_lazy = assert_equal(1, Lazy.new.value)
+        end
+      RUBY
+      write_file("autoload_run.rb", <<~RUBY)
+        require "simplecov"
+        require "simplecov/affected"
+        SimpleCov.start do
+          track_tests
+          affected :all
+          merge_subprocesses true
+        end
+        require "minitest"
+        require_relative "lib/faked_project"
+        autoload :Lazy, File.expand_path("lib/lazy.rb")
+        load File.expand_path("test/lazy_test.rb")
+        pid = fork do
+          SomeClass.new("setup").reverse
+          LazyTest.new("test_lazy").run
+        end
+        Process.wait(pid)
+      RUBY
+      run_command_and_expect_success("bundle exec ruby autoload_run.rb")
+    end
+
+    it "keeps the class body an autoload runs out of the test that triggered it" do
+      expect(lines_of(test_record("test/lazy_test.rb::LazyTest#test_lazy"), "lib/lazy.rb")).to eq([9])
+    end
+
+    it "charges the class body an autoload runs to boot" do
+      expect(lines_of(sidecar.fetch("boot"), "lib/lazy.rb")).to eq([1, 2, 3, 6, 8])
+    end
+
+    it "charges a forked worker's setup to boot, not to the test file loaded last" do
+      expect([lines_of(sidecar.fetch("boot"), "lib/faked_project/some_class.rb"),
+        lines_of(sidecar.dig("loads", "test/lazy_test.rb"), "lib/faked_project/some_class.rb")]).to match([include(12), []])
+    end
+  end
+
   describe "a Minitest suite" do
     before do
       self.bundle_with = "minitest"

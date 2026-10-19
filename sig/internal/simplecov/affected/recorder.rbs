@@ -24,6 +24,8 @@ module SimpleCov
       @sink: Set[String]?
       @narrowed: Set[String]
       @filtered: bool
+      @aside: Set[String]
+      @testing: bool
 
       attr_reader tests: Hash[String, Test]
       attr_reader loads: Hash[String, Set[String]]
@@ -36,6 +38,10 @@ module SimpleCov
       def test: (String id, file: String?, line: Integer?, ?must_run: bool) { () -> bool } -> bool
 
       def loading: [T] (untyped path) { () -> T } -> T
+
+      def aside: [T] (untyped path) { () -> T } -> T
+
+      def forked: () -> void
 
       def boundary: (String file) -> void
 
