@@ -25,9 +25,18 @@ RSpec.describe "simplecov/affected/rails", :sandbox do
       require_relative "../config/environment"
       require "rails/test_help"
       I18n.load_path << Rails.root.join("lib/locales/extra.yml").to_s
+      require_relative "../lib/worker_setup"
 
       class ActiveSupport::TestCase
         parallelize workers: 2, threshold: 0, parallelize_databases: false
+        parallelize_setup { WorkerSetup.call }
+      end
+    RUBY
+    write_file("lib/worker_setup.rb", <<~RUBY)
+      module WorkerSetup
+        def self.call
+          :ready
+        end
       end
     RUBY
     write_file("lib/locales/extra.yml", "en:\n  extra: Extra\n")
@@ -71,6 +80,18 @@ RSpec.describe "simplecov/affected/rails", :sandbox do
 
   context "with the tests spread over two workers" do
     before { run_tests }
+
+    it "folds every worker's tests into one recording" do
+      expect(sidecar.fetch("tests").keys).to contain_exactly("test/models/order_test.rb::OrderTest#test_subtotal",
+        "test/models/receipt_test.rb::ReceiptTest#test_translates", "test/views/orders_test.rb::OrdersTest#test_shows_the_title",
+        "test/views/orders_test.rb::OrdersTest#test_shows_the_total")
+    end
+
+    it "charges each worker's setup to boot, not to a test file's load" do
+      ran = ->(record) { record.dig("lines", "lib/worker_setup.rb", 1).to_s.to_i(16)[2] == 1 }
+
+      expect([ran.call(sidecar.fetch("boot")), sidecar.fetch("loads").values.any?(&ran)]).to eq([true, false])
+    end
 
     it "records the configuration as global files" do
       expect(sidecar.dig("global", "config/**/*")).to include("config/application.rb", "config/routes.rb")
