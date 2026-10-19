@@ -2980,6 +2980,19 @@ RSpec.describe SimpleCov::Configuration do
     end
   end
 
+  describe "#affected_global" do
+    it "names no global files by default" do
+      expect(config.affected_globals).to eq([])
+    end
+
+    it "adds to the globs on each call, once each" do
+      config.affected_global("config/**/*", "db/schema.rb")
+      config.affected_global(["db/schema.rb", "spec/fixtures/**/*"])
+
+      expect(config.affected_globals).to eq(%w[config/**/* db/schema.rb spec/fixtures/**/*])
+    end
+  end
+
   describe "#affected" do
     it "selects by default" do
       expect(config.affected).to eq(:select)

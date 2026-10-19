@@ -1,0 +1,9 @@
+module SimpleCov
+  module Affected
+    module Global
+      extend Global
+
+      def files: (String root, String glob, Recorder project) -> Array[String]
+    end
+  end
+end

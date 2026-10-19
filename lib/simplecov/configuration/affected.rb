@@ -25,6 +25,19 @@ module SimpleCov
       @affected = affected_mode(mode, "affected")
     end
 
+    # Files whose change reruns every test, as globs against the project
+    # root: what a process reads once and keeps (configuration, the schema,
+    # fixtures, locales), so that only whichever test came first would show
+    # the read. Each call adds to the list.
+    def affected_global(*globs)
+      affected_globals.concat(globs.flatten.map(&:to_s)).uniq!
+      affected_globals
+    end
+
+    def affected_globals
+      @affected_globals ||= []
+    end
+
     def env_affected
       value = ENV.fetch("SIMPLECOV_AFFECTED", nil)
       affected_mode(value, "SIMPLECOV_AFFECTED") unless value.nil? || value.empty?

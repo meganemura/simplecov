@@ -2,6 +2,7 @@
 
 require_relative "sidecar"
 require_relative "recorder"
+require_relative "global"
 
 module SimpleCov
   module Affected
@@ -49,6 +50,11 @@ module SimpleCov
 
       def exist?(path)
         File.file?(File.join(@root, path))
+      end
+
+      # The project files a glob matches now.
+      def glob(pattern)
+        Global.files(@root, pattern, @files)
       end
 
       # Every Ruby file of the project, as root-relative paths.

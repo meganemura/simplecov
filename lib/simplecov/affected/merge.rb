@@ -24,7 +24,7 @@ module SimpleCov
     #
     module Merge
       # Recording-wide keys whose values the later document replaces per key.
-      PER_KEY = %w[latest reads unmeasured unloaded].freeze
+      PER_KEY = %w[latest reads unmeasured unloaded global].freeze
 
       extend self
 

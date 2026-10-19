@@ -48,6 +48,8 @@ module SimpleCov
 
       def global: () -> String?
 
+      def global_change: (Hash[String, Hash[String, String?]] globals) -> String?
+
       def boot_reason: (Hash[String, [String, String]] lines) -> String?
 
       def unparsable: () -> String?

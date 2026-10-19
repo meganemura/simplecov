@@ -14,7 +14,7 @@ RSpec.describe SimpleCov::Affected::Parts do
   def part(*ids)
     tests = ids.to_h { |id| [id, {"file" => "a_spec.rb", "reads" => [], "lines" => {}}] }
     {"version" => 1, "root" => root, "env" => "e", "files" => {}, "latest" => {}, "tests" => tests, "loads" => {},
-     "boot" => {"lines" => {}, "reads" => []}, "reads" => {}, "unmeasured" => {}, "unloaded" => {}, "runs" => {}, "complete" => []}
+     "boot" => {"lines" => {}, "reads" => []}, "reads" => {}, "unmeasured" => {}, "unloaded" => {}, "global" => {}, "runs" => {}, "complete" => []}
   end
 
   def sidecar = SimpleCov::Affected::Sidecar.read(File.join(coverage_path, ".affected.json"))

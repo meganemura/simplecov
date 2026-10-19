@@ -19,7 +19,7 @@ RSpec.describe SimpleCov::Affected::Merge do
   def recording(tests: {}, files: {"lib/a.rb" => version("v1")}, latest: {"lib/a.rb" => "v1"}, **rest)
     boot = {"lines" => {}, "reads" => []}
     {"version" => 1, "root" => root, "env" => "e", "files" => files, "latest" => latest, "runs" => {"r1" => latest},
-     "tests" => tests, "loads" => {}, "boot" => boot, "reads" => {}, "unmeasured" => {}, "unloaded" => {}}
+     "tests" => tests, "loads" => {}, "boot" => boot, "reads" => {}, "unmeasured" => {}, "unloaded" => {}, "global" => {}}
       .merge(rest.transform_keys(&:to_s))
   end
 
@@ -67,6 +67,13 @@ RSpec.describe SimpleCov::Affected::Merge do
       joined = described_class.combine([recording(complete: ["spec/b_spec.rb"]), recording(complete: ["spec/a_spec.rb"])])
 
       expect(joined.fetch("complete")).to eq(%w[spec/a_spec.rb spec/b_spec.rb])
+    end
+
+    it "keeps each glob's files from the later part" do
+      joined = described_class.combine([recording(global: {"config/**/*" => {"config/a.yml" => "1"}, "db/*.rb" => {}}),
+        recording(global: {"config/**/*" => {"config/a.yml" => "2"}})])
+
+      expect(joined.fetch("global")).to eq("config/**/*" => {"config/a.yml" => "2"}, "db/*.rb" => {})
     end
   end
 

@@ -84,6 +84,7 @@ in `coverage.json`'s encoding (bit N is line N+1). The other top-level keys are:
 | `env` | A digest of the Ruby version, the platform, and the lockfile. |
 | `runs` | Per run id, the version of each file that run loaded: the tree its tests ran against. |
 | `unloaded` | The project's other Ruby files, which no process loaded, with a digest. |
+| `global` | Per glob of `affected_global`, every file it matched, with a digest. |
 | `complete` | Only in a process's part (see below): the test files whose every test ran. |
 
 ## How the selection decides
@@ -96,6 +97,7 @@ Some changes reach every test, and then the whole suite runs, with the reason:
 | Reason | When |
 | --- | --- |
 | `env` | The Ruby version, the platform, or the lockfile changed. |
+| `global <path>` | A file under a glob of `affected_global` changed, appeared, or is gone. |
 | `read <path>` | A data file read before the first test file (by a helper, say) changed. |
 | `unmeasured <path>` | A project file loaded before coverage started changed. |
 | `unparsable <path>` | A changed file no longer parses. |
@@ -205,3 +207,20 @@ result exists it writes `coverage/.affected-audit.json` and prints a summary on 
 change the selection missed, so a job that audits before the team relies on `:select` checks exactly that. `full`
 is the reason the selection would have run every test, if any (`env`, `no recording`, ...). A test this run ran that
 the recording did not know is selected as `new`.
+
+## Global files
+
+Some files a process reads once and keeps: configuration, a schema, fixtures, locales. Whichever test needs one
+first reads it, so only that test's record shows the read, though every later test depends on it. Name them as
+globs against the project root, and a change to any file they match, a file added under them, or a file removed
+reruns every test with the reason `global <path>`:
+
+```ruby
+SimpleCov.start do
+  track_tests
+  affected_global "spec/fixtures/**/*", "data/schema.json"
+end
+```
+
+Each call adds to the list, which `SimpleCov.affected_globals` holds. Every file the globs match is recorded with a
+digest when a run records, so the files need not have been read by any test.

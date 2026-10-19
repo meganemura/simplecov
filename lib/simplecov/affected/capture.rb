@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "global"
+
 module SimpleCov
   module Affected
     #
@@ -13,7 +15,7 @@ module SimpleCov
     module Capture
       extend self
 
-      def call(recorder, result, root, run:, loaded_features: $LOADED_FEATURES)
+      def call(recorder, result, root, run:, globals: [], loaded_features: $LOADED_FEATURES)
         map = result.contexts
         return nil unless map
 
@@ -25,6 +27,7 @@ module SimpleCov
         record_reads(document, recorder, root)
         record_unmeasured(document, recorder, result.original_result, loaded_features)
         record_unloaded(document, recorder, root)
+        record_globals(document, recorder, root, globals)
         document["complete"] = recorder.complete
         document
       end
@@ -34,7 +37,7 @@ module SimpleCov
       def blank(root)
         empty = {} #: Hash[String, untyped]
         {"version" => Sidecar::VERSION, "root" => root, "env" => Sidecar.env(root), "files" => {}, "latest" => {},
-         "runs" => {}, "tests" => {}, "loads" => {}, "boot" => empty, "reads" => {}, "unmeasured" => {}, "unloaded" => {}}
+         "runs" => {}, "tests" => {}, "loads" => {}, "boot" => empty, "reads" => {}, "unmeasured" => {}, "unloaded" => {}, "global" => {}}
       end
 
       # Coverage itself keys each file's data by symbol; a result read back
@@ -108,6 +111,16 @@ module SimpleCov
           next unless relative&.end_with?(".rb") && !coverage.key?(path)
 
           document.fetch("unmeasured")[relative] = Sidecar.file_digest(path)
+        end
+      end
+
+      # Per glob, every file it matches now, with a digest, so the selection
+      # also sees a file added under it or removed.
+      def record_globals(document, recorder, root, globals)
+        globals.each do |glob|
+          document.fetch("global")[glob] = Global.files(root, glob, recorder).to_h do |path|
+            [path, Sidecar.file_digest(File.join(root, path))]
+          end
         end
       end
 

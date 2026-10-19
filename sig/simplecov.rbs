@@ -499,12 +499,17 @@ end
 module SimpleCov
   module Configuration
     @affected: Symbol?
+    @affected_globals: Array[String]?
 
     AFFECTED_MODES: Array[Symbol]
 
     def affected: (?(Symbol | String)? mode) -> Symbol
 
     def affected=: (Symbol | String mode) -> Symbol
+
+    def affected_global: (*(String | Array[String]) globs) -> Array[String]
+
+    def affected_globals: () -> Array[String]
 
     def env_affected: () -> Symbol?
 

@@ -48,7 +48,7 @@ module AffectedProject
      "tests" => tests.transform_values { |test| test_record(test, latest) },
      "loads" => loads.transform_values { |load| {"lines" => bitmaps(load.fetch(:lines, {}), latest), "reads" => load.fetch(:reads, []), "run" => "run"} },
      "boot" => {"lines" => bitmaps(boot.fetch(:lines, {}), latest), "reads" => boot.fetch(:reads, [])},
-     "reads" => {}, "unmeasured" => {}, "unloaded" => {}}.merge(rest.transform_keys(&:to_s))
+     "reads" => {}, "unmeasured" => {}, "unloaded" => {}, "global" => {}}.merge(rest.transform_keys(&:to_s))
   end
 
   def test_record(test, latest)
