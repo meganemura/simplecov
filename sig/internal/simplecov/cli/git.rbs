@@ -3,6 +3,8 @@ module SimpleCov
     module Git
       def self?.capture: (*String argv) -> [String?, String, bool]
 
+      def self?.diff: (String root, String base, Array[String] options, ?Array[String] paths) -> [String?, String, bool]
+
       def self?.toplevel: () -> String?
 
       def self?.option_like_ref?: (String ref) -> bool

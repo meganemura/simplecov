@@ -47,15 +47,7 @@ module SimpleCov
         # `--merge-base <base>` diffs the merge base of <base> and the working
         # tree against the working tree: the change reads as its own work even
         # when <base> has moved on independently, and uncommitted edits count
-        # too. The rest pins the output against a user's git config so it can't
-        # skew the numbers, run code, or throw off the parse: `--no-ext-diff` /
-        # `--no-textconv` (either runs a configured command, and the latter also
-        # renumbers lines), `--no-color`, `core.quotePath=false` (emit non-ASCII
-        # paths literally, so they still match report keys),
-        # `--inter-hunk-context=0` (never merge hunks over unchanged lines,
-        # which would score those lines as touched), fixed `a/`/`b/` prefixes
-        # (so the `diff_path` strip can't be fooled by `diff.noprefix`), and
-        # `--no-renames` unless asked (so a moved file reads as all-new).
+        # too. `--no-renames` unless asked, so a moved file reads as all-new.
         # stderr is kept out of the parsed stream and its first line returned as
         # the failure detail, so "unknown revision" reaches the user.
         def git_diff(root, base, find_renames:)
@@ -64,11 +56,7 @@ module SimpleCov
           # disk, `--line-prefix=` empties the diff so a `--minimum` gate passes).
           return [nil, "a ref cannot begin with \"-\""] if Git.option_like_ref?(base)
 
-          argv = ["-C", root, "-c", "core.quotePath=false", "diff", "--unified=0",
-            "--no-color", "--no-ext-diff", "--no-textconv", "--inter-hunk-context=0",
-            "--dst-prefix=b/",
-            find_renames ? "--find-renames" : "--no-renames", "--merge-base", base, "--"]
-          stdout, detail, success = Git.capture(*argv)
+          stdout, detail, success = Git.diff(root, base, ["--unified=0", find_renames ? "--find-renames" : "--no-renames"])
           [(stdout if success), detail]
         end
 

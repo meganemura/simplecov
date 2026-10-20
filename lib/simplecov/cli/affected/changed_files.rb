@@ -46,7 +46,11 @@ module SimpleCov
         # git's own first stderr line is relayed on failure, so a bad ref or an old
         # git names itself.
         def git_output(command, argv, stderr)
-          stdout, detail, success = Git.capture(*argv)
+          checked_output(Git.capture(*argv), command, stderr)
+        end
+
+        def checked_output(result, command, stderr)
+          stdout, detail, success = result
           return stdout if success
           return report(stderr, "cannot run git (#{detail})") if stdout.nil?
 
@@ -56,10 +60,9 @@ module SimpleCov
         # Read on the base side, because a report's line numbers predate the change.
         # An added line counts as a change to the base line above it.
         def report_lines_changed(root, base, path, stderr)
-          argv = ["-C", root, "diff", "--unified=#{WHOLE_FILE_CONTEXT}", "--no-color", "--no-ext-diff", "--merge-base", base,
-            "--", ":(literal)#{path}"]
-          patch = git_output("diff", argv, stderr)
-          patch && parse_report_lines_changed(patch)
+          options = ["--unified=#{WHOLE_FILE_CONTEXT}", "--no-renames"]
+          patch = checked_output(Git.diff(root, base, options, [":(literal)#{path}"]), "diff", stderr)
+          patch && parse_report_lines_changed(patch.scrub)
         end
 
         WHOLE_FILE_CONTEXT = 2_147_483_647

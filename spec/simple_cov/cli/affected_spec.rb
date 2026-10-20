@@ -407,7 +407,7 @@ RSpec.describe SimpleCov::CLI do
         failed = instance_double(Process::Status, success?: false)
         allow(Open3).to receive(:capture3).and_call_original
         allow(Open3).to receive(:capture3)
-          .with("git", "-C", anything, "diff", /\A--unified=/, any_args).and_return(["", "boom\n", failed])
+          .with("git", "-C", anything, "-c", any_args).and_return(["", "boom\n", failed])
         file!("lib/loaded.rb", loaded_source.sub("attr_reader :name", "attr_reader :title"))
       end
 
