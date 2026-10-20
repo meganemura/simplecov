@@ -92,20 +92,11 @@ module SimpleCov
         end
 
         # The line spans of every method the file defines after the change, or nil
-        # when Prism cannot load or the file does not parse.
+        # when Prism cannot load or the file does not parse. A method key carries
+        # its start line third and its end line fifth, as `Coverage` reports it.
         def method_lines(source)
-          return nil unless StaticCoverageExtractor.prism_loaded?
-
-          result = Prism.parse(source)
-          return nil if result.failure?
-
-          nodes = [result.value] #: Array[Prism::Node]
-          spans = [] #: Array[Range[Integer]]
-          while (node = nodes.pop)
-            spans << (node.location.start_line..node.location.end_line) if node.is_a?(Prism::DefNode)
-            nodes.concat(node.compact_child_nodes)
-          end
-          spans
+          extracted = StaticCoverageExtractor.call(source)
+          extracted && extracted.fetch("methods").keys.map { |key| key.fetch(2)..key.fetch(4) }
         end
 
         # Code added only as whole new methods changes nothing that ran while the
