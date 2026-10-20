@@ -19,15 +19,8 @@ module SimpleCov
         [nil, e.message, false]
       end
 
-      # `git diff` of the working tree against the merge base of `base`, with the
-      # output pinned against a user's git config so it can't skew the numbers,
-      # run code, or throw off a parse: `--no-ext-diff` / `--no-textconv` (either
-      # runs a configured command, and the latter also renumbers lines),
-      # `--no-color`, `core.quotePath=false` (emit non-ASCII paths literally, so
-      # they still match report keys), `--inter-hunk-context=0` (never merge
-      # hunks over unchanged lines, which would read those lines as touched), and
-      # fixed `b/` prefixes (so `diff.noprefix` can't fool a path strip).
-      # `options` go before the base and `paths` after `--`.
+      # Pinned against the user's git config, so a textconv or external diff
+      # cannot run or renumber lines, and paths and hunks parse the same anywhere.
       def diff(root, base, options, paths = [])
         capture("-C", root, "-c", "core.quotePath=false", "diff", "--no-color", "--no-ext-diff", "--no-textconv",
           "--inter-hunk-context=0", "--dst-prefix=b/", *options, "--merge-base", base, "--", *paths)
