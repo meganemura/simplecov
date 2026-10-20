@@ -20,7 +20,9 @@ module SimpleCov
 
         def self?.parse_report_lines_changed: (String patch) -> { source: Array[String], changed: Array[Integer] }
 
-        def self?.adds_only_methods?: (Array[String] lines) -> bool
+        def self?.method_lines: (String source) -> Array[Range[Integer]]?
+
+        def self?.adds_only_methods?: (Range[Integer] added, Array[Range[Integer]]? methods, Array[String] head) -> bool
 
         def self?.report: (untyped stderr, String message) -> nil
       end

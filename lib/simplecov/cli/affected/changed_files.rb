@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../git"
+require_relative "../../static_coverage_extractor"
 
 module SimpleCov
   module CLI
@@ -67,26 +68,54 @@ module SimpleCov
 
         def parse_report_lines_changed(patch)
           source = [] #: Array[String]
+          head = [] #: Array[String]
           changed = [] #: Array[Integer]
-          rows = patch.lines.drop_while { |line| !line.start_with?("@@") }.drop(1)
+          additions = [] #: Array[[Integer, Range[Integer]]]
+          rows = patch.lines.drop_while { |line| !line.start_with?("@@") }.drop(1).grep_v(/\A\\/)
           rows.chunk { |row| row.start_with?("+") }.each do |added, run|
             lines = run.map { |row| _ = row[1..] } #: Array[String]
-            next changed << source.size if added && lines.grep(CODE_LINE).any? && !adds_only_methods?(lines)
-            next if added
+            if added
+              additions << [source.size, (head.size + 1)..(head.size + lines.size)] if lines.grep(CODE_LINE).any?
+              next head.concat(lines)
+            end
 
             run.each_with_index do |row, index|
               source << lines.fetch(index)
-              changed << source.size if row.start_with?("-") && CODE_LINE.match?(source.last)
+              next changed << source.size if row.start_with?("-") && CODE_LINE.match?(source.last)
+
+              head << lines.fetch(index) unless row.start_with?("-")
             end
           end
-          {source: source, changed: changed}
+          methods = method_lines(head.join)
+          additions.each { |line, added| changed << line unless adds_only_methods?(added, methods, head) }
+          {source: source, changed: changed.sort}
         end
 
-        # Judged by layout, so the added text need not parse on its own.
-        def adds_only_methods?(lines)
-          code = lines.grep(CODE_LINE)
-          margin = code.fetch(0).delete_suffix(code.fetch(0).lstrip)
-          code.all? { |line| line.match?(/\A#{margin}(?:\s|(?:\w+\s+)*def\b|end\b)/) }
+        # The line spans of every method the file defines after the change, or nil
+        # when Prism cannot load or the file does not parse.
+        def method_lines(source)
+          return nil unless StaticCoverageExtractor.prism_loaded?
+
+          result = Prism.parse(source)
+          return nil if result.failure?
+
+          nodes = [result.value] #: Array[Prism::Node]
+          spans = [] #: Array[Range[Integer]]
+          while (node = nodes.pop)
+            spans << (node.location.start_line..node.location.end_line) if node.is_a?(Prism::DefNode)
+            nodes.concat(node.compact_child_nodes)
+          end
+          spans
+        end
+
+        # Code added only as whole new methods changes nothing that ran while the
+        # file loaded, apart from the def lines that name them.
+        def adds_only_methods?(added, methods, head)
+          return false unless methods
+
+          added.all? do |number|
+            !CODE_LINE.match?(head.fetch(number - 1)) || methods.any? { |span| span.cover?(number) && added.cover?(span) }
+          end
         end
 
         def report(stderr, message)
